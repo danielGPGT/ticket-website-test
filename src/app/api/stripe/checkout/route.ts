@@ -54,7 +54,10 @@ export async function POST(req: NextRequest) {
 		.single();
 	if (error) return Response.json({ error: error.message }, { status: 400 });
 
-	return Response.json({ client_secret: pi.client_secret, order_id: data.id });
+	return Response.json({ 
+		client_secret: pi.client_secret, 
+		order_id: (data as any)?.id || null 
+	});
 }
 
 

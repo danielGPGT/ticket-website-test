@@ -19,11 +19,11 @@ export async function POST(req: NextRequest) {
 	const supabase = getSupabaseAdmin();
 	if (event.type === "payment_intent.succeeded") {
 		const pi = event.data.object as { id: string };
-		await supabase.from("orders").update({ status: "paid", updated_at: new Date().toISOString() }).eq("stripe_payment_intent_id", pi.id);
+		await (supabase.from("orders") as any).update({ status: "paid", updated_at: new Date().toISOString() }).eq("stripe_payment_intent_id", pi.id);
 	}
 	if (event.type === "payment_intent.payment_failed") {
 		const pi = event.data.object as { id: string };
-		await supabase.from("orders").update({ status: "cancelled", updated_at: new Date().toISOString() }).eq("stripe_payment_intent_id", pi.id);
+		await (supabase.from("orders") as any).update({ status: "cancelled", updated_at: new Date().toISOString() }).eq("stripe_payment_intent_id", pi.id);
 	}
 	return new Response("ok", { status: 200 });
 }

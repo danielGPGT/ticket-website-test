@@ -5,6 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { SectionHeader } from "@/components/section-header";
 import { X } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 type CategoryInfo = {
   category_id?: string;
@@ -906,7 +907,7 @@ export function VenueMap({ venueId, eventId, categories, tickets = [], className
 
   return (
     <>
-      <Card className={className} className="py-0"> 
+      <Card className={cn(className, "py-0")}> 
         <CardContent className="p-0">
           <div className="overflow-auto max-h-[600px]">
             {error ? (

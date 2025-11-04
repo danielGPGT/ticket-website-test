@@ -8,18 +8,37 @@
 
 ## Environment Variables Required
 
-Add these in Netlify Dashboard → Site Settings → Environment Variables:
+**⚠️ IMPORTANT:** Add these in Netlify Dashboard → Site Settings → Environment Variables before deploying.
 
-### Required
-- `XS2_API_KEY` - Your XS2 Event API key
+### Required (Backend - Server-side only)
+- `XS2_API_KEY` - Your XS2 Event API key (used in API proxy routes)
+- `SUPABASE_SERVICE_ROLE_KEY` - Your Supabase service role key (for admin operations)
+- `STRIPE_SECRET_KEY` - Your Stripe secret key (starts with `sk_`)
+- `STRIPE_WEBHOOK_SECRET` - Your Stripe webhook signing secret (starts with `whsec_`)
+
+### Required (Frontend - Public)
 - `NEXT_PUBLIC_SUPABASE_URL` - Your Supabase project URL
-- `SUPABASE_SERVICE_ROLE_KEY` - Your Supabase service role key
-- `STRIPE_SECRET_KEY` - Your Stripe secret key
-- `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` - Your Stripe publishable key
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY` - Your Supabase anonymous/public key
 - `NEXT_PUBLIC_BASE_URL` - Your production URL (e.g., `https://your-site.netlify.app`)
 
 ### Optional
-- `NODE_ENV` - Set to `production`
+- `XS2_API_BASE` - XS2 API base URL (defaults to `https://api.xs2event.com/v1`)
+- `NODE_ENV` - Automatically set to `production` by Netlify
+
+### How to Add Environment Variables in Netlify
+
+1. Go to your site in Netlify Dashboard
+2. Navigate to **Site Settings** → **Environment Variables**
+3. Click **Add a variable** for each variable above
+4. Enter the variable name and value
+5. Click **Save**
+6. Redeploy your site for changes to take effect
+
+### Notes
+- **Never commit** `.env.local` or `.env` files to Git
+- `NEXT_PUBLIC_*` variables are exposed to the browser - only include safe, public values
+- Server-side variables (without `NEXT_PUBLIC_`) are never exposed to the client
+- After adding environment variables, you must trigger a new deployment
 
 ## Deployment Steps
 
@@ -59,16 +78,32 @@ The `netlify.toml` file is already configured with:
 - Node.js 20
 - Correct build and publish directories
 
+## Pre-Deployment Checklist
+
+Before deploying, make sure you have all required environment variables:
+
+### Backend Variables (Required)
+- [ ] `XS2_API_KEY` - Get from XS2 Event API dashboard
+- [ ] `SUPABASE_SERVICE_ROLE_KEY` - Get from Supabase Dashboard → Settings → API
+- [ ] `STRIPE_SECRET_KEY` - Get from Stripe Dashboard → Developers → API keys
+- [ ] `STRIPE_WEBHOOK_SECRET` - Get from Stripe Dashboard → Developers → Webhooks (after creating webhook endpoint)
+
+### Frontend Variables (Required)
+- [ ] `NEXT_PUBLIC_SUPABASE_URL` - Get from Supabase Dashboard → Settings → API
+- [ ] `NEXT_PUBLIC_SUPABASE_ANON_KEY` - Get from Supabase Dashboard → Settings → API
+- [ ] `NEXT_PUBLIC_BASE_URL` - Set to your Netlify URL (e.g., `https://your-site.netlify.app`)
+
 ## Post-Deployment Checklist
 
-- [ ] Verify all environment variables are set
+- [ ] Verify all environment variables are set correctly in Netlify
 - [ ] Test the homepage loads correctly
 - [ ] Test event browsing and filtering
 - [ ] Test event detail pages
-- [ ] Verify API routes are working
+- [ ] Verify API routes are working (check Network tab for errors)
 - [ ] Check that images are loading correctly
 - [ ] Test mobile responsiveness
 - [ ] Verify Stripe payment flow (if applicable)
+- [ ] Test Supabase connection (if applicable)
 
 ## Troubleshooting
 

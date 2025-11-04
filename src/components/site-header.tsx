@@ -11,17 +11,17 @@ import {
 	NavigationMenuContent,
 } from "@/components/ui/navigation-menu";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Sheet, SheetContent, SheetTrigger, SheetClose } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Input } from "@/components/ui/input";
-import { ShoppingCart, User, Menu, Search, ChevronRight, Calendar, Users, Trophy } from "lucide-react";
+import { ShoppingCart, User } from "lucide-react";
 import { useCartStore } from "@/store/cart-store";
 import { Badge } from "@/components/ui/badge";
 
 const staticSports = [
-	{ href: "/events?sport_type=formula1", label: "Formula 1", id: "formula1" },
-	{ href: "/events?sport_type=football", label: "Football", id: "football" },
-	{ href: "/events?sport_type=motogp", label: "MotoGP", id: "motogp" },
-	{ href: "/events?sport_type=tennis", label: "Tennis", id: "tennis" },
+	{ href: "/formula-1", label: "Formula 1", id: "formula1" },
+	{ href: "/football", label: "Football", id: "football" },
+	{ href: "/motogp", label: "MotoGP", id: "motogp" },
+	{ href: "/tennis", label: "Tennis", id: "tennis" },
 ];
 
 const countryNameMap: Record<string, string> = {
@@ -77,30 +77,6 @@ export function SiteHeader() {
 	const [tennisLoading, setTennisLoading] = useState(false);
 	// Mobile navigation state
 	const [mobileExpanded, setMobileExpanded] = useState<Record<string, boolean>>({});
-	const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-	const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
-
-	// Reset expanded states when mobile menu closes
-	useEffect(() => {
-		if (!mobileMenuOpen) {
-			setMobileExpanded({});
-		}
-	}, [mobileMenuOpen]);
-
-	// Auto-focus search input when mobile search opens
-	useEffect(() => {
-		if (mobileSearchOpen) {
-			// Small delay to ensure Sheet is fully rendered
-			const timer = setTimeout(() => {
-				const input = document.querySelector('input[type="search"]') as HTMLInputElement;
-				if (input) {
-					input.focus();
-					input.select();
-				}
-			}, 100);
-			return () => clearTimeout(timer);
-		}
-	}, [mobileSearchOpen]);
 
 	useEffect(() => {
 		fetch("/api/xs2/sports")
@@ -151,10 +127,10 @@ export function SiteHeader() {
 	const mainIds = new Set(["football", "formula1", "motogp", "tennis"]);
 	const mainSports = useMemo(() => {
 		const byId: Record<string, { href: string; label: string }> = {
-			football: { href: "/events?sport_type=football", label: "Football" },
-			formula1: { href: "/events?sport_type=formula1", label: "Formula 1" },
-			motogp: { href: "/events?sport_type=motogp", label: "MotoGP" },
-			tennis: { href: "/events?sport_type=tennis", label: "Tennis" },
+			football: { href: "/football", label: "Football" },
+			formula1: { href: "/formula-1", label: "Formula 1" },
+			motogp: { href: "/motogp", label: "MotoGP" },
+			tennis: { href: "/tennis", label: "Tennis" },
 		};
 		return ["football", "formula1", "motogp", "tennis"].filter((id) => fetchedSports.includes(id) || id).map((id) => byId[id]);
 	}, [fetchedSports]);
@@ -165,12 +141,9 @@ export function SiteHeader() {
 		return ids.map((id) => ({ id, label: humanize(id), href: `/events?sport_type=${encodeURIComponent(id)}` })).slice(0, 20);
 	}, [fetchedSports]);
 
-	function onSearchSubmit(e: React.FormEvent, closeSheet?: () => void) {
+	function onSearchSubmit(e: React.FormEvent) {
 		e.preventDefault();
-		if (query.trim()) {
-			router.push(`/events?query=${encodeURIComponent(query.trim())}`);
-			closeSheet?.();
-		}
+		if (query.trim()) router.push(`/events?query=${encodeURIComponent(query.trim())}`);
 	}
 
 	async function loadCountryData(countryCode: string) {
@@ -375,475 +348,300 @@ export function SiteHeader() {
 
 	return (
 		<header className="sticky top-0 z-50 border-b bg-card">
-			<div className="mx-auto container px-4 py-2 sm:py-3 flex items-center justify-between gap-2 sm:gap-3">
-				{/* Logo - Far Left */}
-				<Link href="/" className="flex items-center gap-2 flex-shrink-0">
-					<Image 
-						src="/APEX-TICKETS.svg" 
-						alt="Apex Tickets" 
-						width={160} 
-						height={26} 
-						priority 
-						className="h-12 sm:h-18 w-auto"
-					/>
-				</Link>
-
-				{/* Desktop Search */}
-				<form onSubmit={onSearchSubmit} className="hidden sm:flex flex-1 max-w-lg mx-4">
-					<Input placeholder="Find your next event" value={query} onChange={(e) => setQuery(e.target.value)} className="bg-background" />
-				</form>
-
-				{/* Right side - Mobile Icons & Menu, Desktop Navigation */}
-				<div className="flex items-center gap-1 sm:gap-2 ml-auto">
-					{/* Mobile Account Button */}
-					<DropdownMenu>
-						<DropdownMenuTrigger asChild>
-							<button className="sm:hidden p-2 rounded-md hover:bg-accent transition-colors active:scale-95" aria-label="Account">
-								<User className="w-5 h-5" />
-							</button>
-						</DropdownMenuTrigger>
-						<DropdownMenuContent align="end" className="w-48">
-							<DropdownMenuItem asChild>
-								<Link href="#">Sign in</Link>
-							</DropdownMenuItem>
-							<DropdownMenuItem asChild>
-								<Link href="#">Orders</Link>
-							</DropdownMenuItem>
-						</DropdownMenuContent>
-					</DropdownMenu>
-
-					{/* Mobile Cart Button */}
-					<Link 
-						href="/cart" 
-						className="sm:hidden relative p-2 rounded-md hover:bg-accent transition-colors active:scale-95"
-						aria-label="Cart"
-					>
-						<ShoppingCart className="w-5 h-5" />
-						{cartItemCount > 0 && (
-							<Badge className="absolute -top-0.5 -right-0.5 h-4 w-4 flex items-center justify-center p-0 text-[10px] bg-primary text-primary-foreground rounded-full border border-background">
-								{cartItemCount > 99 ? "99+" : cartItemCount}
-							</Badge>
-						)}
-					</Link>
-
-					{/* Mobile Search Button */}
-					<Sheet open={mobileSearchOpen} onOpenChange={setMobileSearchOpen}>
-						<SheetTrigger asChild>
-							<button className="sm:hidden p-2 rounded-md hover:bg-accent transition-colors active:scale-95" aria-label="Search">
-								<Search className="w-5 h-5" />
-							</button>
-						</SheetTrigger>
-						<SheetContent 
-							side="top" 
-							className="h-auto p-0 border-b data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:slide-out-to-top data-[state=open]:slide-in-from-top [&>button]:hidden"
-						>
-							<div className="p-4 sm:p-6 bg-card border-b">
-								<div className="max-w-2xl mx-auto">
-									<div className="relative group">
-										<Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground group-focus-within:text-primary transition-colors duration-200 z-10 pointer-events-none" />
-										<form
-											onSubmit={(e) => {
-												e.preventDefault();
-												if (query.trim()) {
-													router.push(`/events?query=${encodeURIComponent(query.trim())}`);
-													setMobileSearchOpen(false);
-												}
-											}}
-											className="w-full"
-										>
-											<Input
-												type="search"
-												placeholder="Search for events, teams, venues..."
-												value={query}
-												onChange={(e) => setQuery(e.target.value)}
-												className="w-full h-14 pl-12 pr-4 text-base shadow-sm focus-visible:ring-2 focus-visible:ring-primary/20 border-2"
-												autoFocus
-												onKeyDown={(e) => {
-													if (e.key === "Escape") {
-														setMobileSearchOpen(false);
-													}
-												}}
-											/>
-										</form>
-									</div>
-									<div className="mt-3 flex items-center justify-between">
-										{query.trim() ? (
-											<div className="flex items-center gap-2 text-sm text-muted-foreground animate-in fade-in-0 duration-200">
-												<span>Ready to search</span>
-												<span className="text-muted-foreground/50">•</span>
-												<span className="text-xs">Press Enter or Escape to close</span>
-											</div>
-										) : (
-											<div className="text-xs text-muted-foreground/70 animate-in fade-in-0 duration-200">
-												Start typing to search events, teams, and venues
-											</div>
-										)}
-										<button
-											onClick={() => setMobileSearchOpen(false)}
-											className="text-xs text-muted-foreground hover:text-foreground transition-colors px-2 py-1 rounded-md hover:bg-accent"
-											aria-label="Close search"
-										>
-											ESC
-										</button>
-									</div>
-								</div>
-							</div>
-						</SheetContent>
-					</Sheet>
-
-					{/* Mobile Menu */}
-					<Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
-						<SheetTrigger asChild>
-							<button className="sm:hidden p-2 rounded-md hover:bg-accent transition-colors" aria-label="Open menu">
-								<Menu className="w-6 h-6" />
-							</button>
-						</SheetTrigger>
-					<SheetContent side="right" className="w-80 sm:w-96 p-0 overflow-y-auto">
-						{/* Header */}
-						<div className="p-6 border-b bg-gradient-to-b from-card to-card/95 sticky top-0 z-10">
-							<div className="flex items-center justify-between mb-4">
-								<Image src="/APEX-TICKETS.svg" alt="Apex Tickets" width={140} height={22} />
-							</div>
-							<button
-								onClick={() => {
-									setMobileSearchOpen(true);
-									setMobileMenuOpen(false);
-								}}
-								className="w-full flex items-center gap-3 px-4 py-3 rounded-lg border bg-background hover:bg-accent transition-colors text-left"
-							>
-								<Search className="w-4 h-4 text-muted-foreground" />
-								<span className="text-sm text-muted-foreground">Search events...</span>
-							</button>
+			<div className="mx-auto container px-4 py-3 flex items-center gap-3">
+				<Sheet>
+					<SheetTrigger asChild>
+						<button className="sm:hidden p-2 -ml-2" aria-label="Open menu">
+							<span className="block h-0.5 w-6 bg-foreground mb-1" />
+							<span className="block h-0.5 w-6 bg-foreground mb-1" />
+							<span className="block h-0.5 w-6 bg-foreground" />
+						</button>
+					</SheetTrigger>
+					<SheetContent side="left" className="w-80 sm:w-96 p-0 overflow-y-auto">
+						<div className="p-4 border-b sticky top-0 bg-card z-10">
+							<Image src="/APEX-TICKETS.svg" alt="Apex Tickets" width={150} height={24} />
+							<form onSubmit={onSearchSubmit} className="mt-3">
+								<Input placeholder="Find your next event" value={query} onChange={(e) => setQuery(e.target.value)} />
+							</form>
 						</div>
-
-						{/* Navigation */}
-						<nav className="p-4 pb-20">
-							<div className="mb-2">
-								<div className="px-3 py-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">
-									Popular Sports
-								</div>
-								
-								{/* Football - Expandable with countries */}
-								<div className="mb-1">
-									<button
-										onClick={() => {
-											setMobileExpanded((p) => ({ ...p, football: !p.football }));
-											if (!footballCountries.length && !mobileExpanded.football) {
-												// Fetch countries that actually have football tournaments/events
-												Promise.all([
-													fetch("/api/xs2/tournaments?sport_type=football&page_size=100"),
-													fetch("/api/xs2/events?sport_type=football&page_size=100"),
-												])
-													.then(async ([tournamentsRes, eventsRes]) => {
-														const [tournamentsData, eventsData] = await Promise.all([
-															tournamentsRes.json(),
-															eventsRes.json(),
-														]);
-														const tournaments = tournamentsData.tournaments ?? tournamentsData.results ?? [];
-														const events = eventsData.events ?? eventsData.results ?? [];
-														const countrySet = new Set<string>();
-														// Extract countries from tournaments
-														tournaments.forEach((t: any) => {
-															const code = String(t.country ?? t.iso_country ?? "").trim();
-															if (code) countrySet.add(code);
-														});
-														// Extract countries from events
-														events.forEach((e: any) => {
-															const code = String(e.iso_country ?? e.country ?? "").trim();
-															if (code) countrySet.add(code);
-														});
-														const codes = Array.from(countrySet).slice(0, 20).sort();
-														if (codes.length) setFootballCountries(codes);
-													})
-													.catch(() => {
-														// Fallback to countries API if tournaments/events fetch fails
-														fetch("/api/xs2/countries?page_size=50")
-															.then((r) => r.json())
-															.then((d) => {
-																const arr = (d.countries ?? d.results ?? []) as any[];
-																const codes = arr.map((c) => String(c.country ?? c.iso_country ?? "")).filter(Boolean).slice(0, 15);
-																if (codes.length) setFootballCountries(codes);
-															});
+						<nav className="p-2 text-sm pb-20">
+							{/* Football - Expandable with countries */}
+							<div>
+								<button
+									onClick={() => {
+										setMobileExpanded((p) => ({ ...p, football: !p.football }));
+										if (!footballCountries.length && !mobileExpanded.football) {
+											// Fetch countries that actually have football tournaments/events
+											Promise.all([
+												fetch("/api/xs2/tournaments?sport_type=football&page_size=100"),
+												fetch("/api/xs2/events?sport_type=football&page_size=100"),
+											])
+												.then(async ([tournamentsRes, eventsRes]) => {
+													const [tournamentsData, eventsData] = await Promise.all([
+														tournamentsRes.json(),
+														eventsRes.json(),
+													]);
+													const tournaments = tournamentsData.tournaments ?? tournamentsData.results ?? [];
+													const events = eventsData.events ?? eventsData.results ?? [];
+													const countrySet = new Set<string>();
+													// Extract countries from tournaments
+													tournaments.forEach((t: any) => {
+														const code = String(t.country ?? t.iso_country ?? "").trim();
+														if (code) countrySet.add(code);
 													});
-											}
-										}}
-										className="w-full text-left flex items-center justify-between px-4 py-3 text-base font-medium hover:bg-accent rounded-lg transition-colors group"
-									>
-										<span className="flex items-center gap-3">
-											<Trophy className="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors" />
-											<span>Football</span>
-										</span>
-										<ChevronRight 
-											className={`w-4 h-4 text-muted-foreground transition-transform duration-200 ${mobileExpanded.football ? "rotate-90" : ""}`} 
-										/>
-									</button>
-									{mobileExpanded.football && (
-										<div className="mt-2 ml-8 space-y-1 animate-in fade-in-0 slide-in-from-top-2 duration-200">
-											{footballCountries.length ? (
-												<>
-													{footballCountries.map((code) => (
-														<Link
-															key={code}
-															href={`/events?sport_type=football&iso_country=${encodeURIComponent(code)}`}
-															className="block px-3 py-2.5 rounded-lg hover:bg-accent active:bg-muted transition-colors"
-															onClick={() => {
-																setMobileExpanded((p) => ({ ...p, football: false }));
-																setMobileMenuOpen(false);
-															}}
-														>
-															<div className="flex items-center gap-2.5">
-																<CountryFlag countryCode={code} size={18} className="shrink-0" />
-																<span className="text-sm">{formatCountryName(code)}</span>
-															</div>
-														</Link>
-													))}
-													<Link
-														href="/events?sport_type=football"
-														className="block px-3 py-2.5 rounded-lg hover:bg-accent active:bg-muted font-medium text-sm border-t border-border/50 mt-2 pt-2"
-														onClick={() => {
-															setMobileExpanded((p) => ({ ...p, football: false }));
-															setMobileMenuOpen(false);
-														}}
-													>
-														View All Football
-													</Link>
-												</>
-											) : (
-												<div className="px-3 py-2 text-sm text-muted-foreground">Loading countries…</div>
-											)}
-										</div>
-									)}
-								</div>
+													// Extract countries from events
+													events.forEach((e: any) => {
+														const code = String(e.iso_country ?? e.country ?? "").trim();
+														if (code) countrySet.add(code);
+													});
+													const codes = Array.from(countrySet).slice(0, 20).sort();
+													if (codes.length) setFootballCountries(codes);
+												})
+												.catch(() => {
+													// Fallback to countries API if tournaments/events fetch fails
+													fetch("/api/xs2/countries?page_size=50")
+														.then((r) => r.json())
+														.then((d) => {
+															const arr = (d.countries ?? d.results ?? []) as any[];
+															const codes = arr.map((c) => String(c.country ?? c.iso_country ?? "")).filter(Boolean).slice(0, 15);
+															if (codes.length) setFootballCountries(codes);
+														});
+												});
+										}
+									}}
+									className="w-full text-left flex items-center justify-between px-3 py-3 text-base font-medium hover:bg-accent rounded-md"
+								>
+									<span>Football</span>
+									<span>{mobileExpanded.football ? "−" : "+"}</span>
+								</button>
+								{mobileExpanded.football && (
+									<div className="pl-4 pt-1 pb-2">
+										{footballCountries.length ? (
+											footballCountries.map((code) => (
+												<Link
+													key={code}
+													href={`/events?sport_type=football&iso_country=${encodeURIComponent(code)}`}
+													className="block px-3 py-2.5 rounded-md hover:bg-accent active:bg-muted"
+													onClick={() => setMobileExpanded((p) => ({ ...p, football: false }))}
+												>
+													<div className="flex items-center gap-2">
+														<CountryFlag countryCode={code} size={18} className="flex-shrink-0" />
+														{formatCountryName(code)}
+													</div>
+												</Link>
+											))
+										) : (
+											<div className="px-3 py-2 text-muted-foreground">Loading countries…</div>
+										)}
+										<Link
+											href="/events?sport_type=football"
+											className="block px-3 py-2.5 rounded-md hover:bg-accent active:bg-muted font-medium"
+											onClick={() => setMobileExpanded((p) => ({ ...p, football: false }))}
+										>
+											All Football Events
+										</Link>
+									</div>
+								)}
+							</div>
 
-								{/* Formula 1 - Expandable with events */}
-								<div className="mb-1">
-									<button
-										onClick={() => {
-											setMobileExpanded((p) => ({ ...p, formula1: !p.formula1 }));
-											if (!otherSportEvents["formula1"] && !mobileExpanded.formula1) {
-												loadEventsForSport("formula1");
-											}
-										}}
-										className="w-full text-left flex items-center justify-between px-4 py-3 text-base font-medium hover:bg-accent rounded-lg transition-colors group"
-									>
-										<span className="flex items-center gap-3">
-											<Calendar className="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors" />
-											<span>Formula 1</span>
-										</span>
-										<ChevronRight 
-											className={`w-4 h-4 text-muted-foreground transition-transform duration-200 ${mobileExpanded.formula1 ? "rotate-90" : ""}`} 
-										/>
-									</button>
-									{mobileExpanded.formula1 && (
-										<div className="mt-2 ml-8 max-h-[60vh] overflow-y-auto space-y-1 animate-in fade-in-0 slide-in-from-top-2 duration-200">
-											{(otherSportEvents["formula1"] ?? []).length ? (
-												(() => {
-													const f1Events = otherSportEvents["formula1"] ?? [];
-													const grouped = groupEventsByYear(f1Events);
-													const years = Object.keys(grouped).map(Number).sort((a, b) => a - b);
-													return years.map((year) => (
-														<div key={year} className="mb-3">
-															<div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide px-3 py-2">{year}</div>
-															{grouped[year].slice(0, 8).map((e: any) => (
-																<Link
-																	key={e.event_id ?? e.id}
-																	href={`/events/${encodeURIComponent(e.event_id ?? e.id)}`}
-																	className="block px-3 py-2.5 rounded-lg hover:bg-accent active:bg-muted transition-colors"
-																	onClick={() => {
-																		setMobileExpanded((p) => ({ ...p, formula1: false }));
-																		setMobileMenuOpen(false);
-																	}}
-																>
-																	<div className="flex items-center gap-2.5">
-																		<CountryFlag countryCode={e.iso_country ?? e.country} size={18} className="shrink-0" />
-																		<span className="flex-1 truncate text-sm">{e.event_name ?? e.name}</span>
-																	</div>
-																	<div className="text-xs text-muted-foreground mt-1 ml-7">{formatEventDate(e)}</div>
-																</Link>
-															))}
-														</div>
-													));
-												})()
-											) : otherSportLoading ? (
-												<div className="px-3 py-2 text-sm text-muted-foreground">Loading events…</div>
-											) : (
-												<div className="px-3 py-2 text-sm text-muted-foreground">No upcoming events</div>
-											)}
-											<Link
-												href="/events?sport_type=formula1"
-												className="block px-3 py-2.5 rounded-lg hover:bg-accent active:bg-muted font-medium text-sm border-t border-border/50 mt-2 pt-2"
-												onClick={() => {
-													setMobileExpanded((p) => ({ ...p, formula1: false }));
-													setMobileMenuOpen(false);
-												}}
-											>
-												View All Formula 1
-											</Link>
-										</div>
-									)}
-								</div>
-
-								{/* MotoGP */}
-								<div className="mb-1">
-									<button
-										onClick={() => {
-											setMobileExpanded((p) => ({ ...p, motogp: !p.motogp }));
-											if (!otherSportEvents["motogp"] && !mobileExpanded.motogp) {
-												loadEventsForSport("motogp");
-											}
-										}}
-										className="w-full text-left flex items-center justify-between px-4 py-3 text-base font-medium hover:bg-accent rounded-lg transition-colors group"
-									>
-										<span className="flex items-center gap-3">
-											<Calendar className="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors" />
-											<span>MotoGP</span>
-										</span>
-										<ChevronRight 
-											className={`w-4 h-4 text-muted-foreground transition-transform duration-200 ${mobileExpanded.motogp ? "rotate-90" : ""}`} 
-										/>
-									</button>
-									{mobileExpanded.motogp && (
-										<div className="mt-2 ml-8 max-h-[60vh] overflow-y-auto space-y-1 animate-in fade-in-0 slide-in-from-top-2 duration-200">
-											{(otherSportEvents["motogp"] ?? []).length ? (
-												<>
-													{(otherSportEvents["motogp"] ?? [])
-														.slice()
-														.sort((a: any, b: any) => new Date(a.date_start ?? 0).getTime() - new Date(b.date_start ?? 0).getTime())
-														.slice(0, 10)
-														.map((e: any) => (
+							{/* Formula 1 - Expandable with events */}
+							<div className="mt-1">
+								<button
+									onClick={() => {
+										setMobileExpanded((p) => ({ ...p, formula1: !p.formula1 }));
+										if (!otherSportEvents["formula1"] && !mobileExpanded.formula1) {
+											loadEventsForSport("formula1");
+										}
+									}}
+									className="w-full text-left flex items-center justify-between px-3 py-3 text-base font-medium hover:bg-accent rounded-md"
+								>
+									<span>Formula 1</span>
+									<span>{mobileExpanded.formula1 ? "−" : "+"}</span>
+								</button>
+								{mobileExpanded.formula1 && (
+									<div className="pl-4 pt-1 pb-2 max-h-[60vh] overflow-y-auto">
+										{(otherSportEvents["formula1"] ?? []).length ? (
+											(() => {
+												const f1Events = otherSportEvents["formula1"] ?? [];
+												const grouped = groupEventsByYear(f1Events);
+												const years = Object.keys(grouped).map(Number).sort((a, b) => a - b);
+												return years.map((year) => (
+													<div key={year} className="mb-3">
+														<div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide px-3 py-2">{year}</div>
+														{grouped[year].slice(0, 10).map((e: any) => (
 															<Link
 																key={e.event_id ?? e.id}
 																href={`/events/${encodeURIComponent(e.event_id ?? e.id)}`}
-																className="block px-3 py-2.5 rounded-lg hover:bg-accent active:bg-muted transition-colors"
-																onClick={() => {
-																	setMobileExpanded((p) => ({ ...p, motogp: false }));
-																	setMobileMenuOpen(false);
-																}}
+																className="block px-3 py-2.5 rounded-md hover:bg-accent active:bg-muted"
+																onClick={() => setMobileExpanded((p) => ({ ...p, formula1: false }))}
 															>
-																<div className="flex items-center gap-2.5">
-																	<CountryFlag countryCode={e.iso_country ?? e.country} size={18} className="shrink-0" />
-																	<span className="flex-1 truncate text-sm">{e.event_name ?? e.name}</span>
+																<div className="flex items-center gap-2">
+																	<CountryFlag countryCode={e.iso_country ?? e.country} size={18} className="flex-shrink-0" />
+																	<span className="flex-1 truncate">{e.event_name ?? e.name}</span>
 																</div>
-																<div className="text-xs text-muted-foreground mt-1 ml-7">{formatEventDate(e)}</div>
+																<div className="text-xs text-muted-foreground mt-0.5 pl-7">{formatEventDate(e)}</div>
 															</Link>
 														))}
-													<Link
-														href="/events?sport_type=motogp"
-														className="block px-3 py-2.5 rounded-lg hover:bg-accent active:bg-muted font-medium text-sm border-t border-border/50 mt-2 pt-2"
-														onClick={() => {
-															setMobileExpanded((p) => ({ ...p, motogp: false }));
-															setMobileMenuOpen(false);
-														}}
-													>
-														View All MotoGP
-													</Link>
-												</>
-											) : otherSportLoading ? (
-												<div className="px-3 py-2 text-sm text-muted-foreground">Loading events…</div>
-											) : (
-												<div className="px-3 py-2 text-sm text-muted-foreground">No upcoming events</div>
-											)}
-										</div>
-									)}
-								</div>
+													</div>
+												));
+											})()
+										) : otherSportLoading ? (
+											<div className="px-3 py-2 text-muted-foreground">Loading events…</div>
+										) : (
+											<div className="px-3 py-2 text-muted-foreground">No upcoming events</div>
+										)}
+										<Link
+											href="/events?sport_type=formula1"
+											className="block px-3 py-2.5 rounded-md hover:bg-accent active:bg-muted font-medium mt-2"
+											onClick={() => setMobileExpanded((p) => ({ ...p, formula1: false }))}
+										>
+											View All Formula 1
+										</Link>
+									</div>
+								)}
+							</div>
 
-								{/* Tennis - Expandable with tournaments */}
-								<div className="mb-1">
-									<button
-										onClick={() => {
-											setMobileExpanded((p) => ({ ...p, tennis: !p.tennis }));
-											if (!tennisTournaments.length && !mobileExpanded.tennis) {
-												loadTennisTournaments();
-											}
-										}}
-										className="w-full text-left flex items-center justify-between px-4 py-3 text-base font-medium hover:bg-accent rounded-lg transition-colors group"
-									>
-										<span className="flex items-center gap-3">
-											<Trophy className="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors" />
-											<span>Tennis</span>
-										</span>
-										<ChevronRight 
-											className={`w-4 h-4 text-muted-foreground transition-transform duration-200 ${mobileExpanded.tennis ? "rotate-90" : ""}`} 
-										/>
-									</button>
-									{mobileExpanded.tennis && (
-										<div className="mt-2 ml-8 max-h-[60vh] overflow-y-auto space-y-1 animate-in fade-in-0 slide-in-from-top-2 duration-200">
-											{tennisTournaments.length ? (
-												<>
-													{tennisTournaments.slice(0, 20).map((t: any) => (
-														<Link
-															key={t.tournament_id ?? t.id}
-															href={`/events?tournament_id=${encodeURIComponent(String(t.tournament_id ?? t.id))}`}
-															className="block px-3 py-2.5 rounded-lg hover:bg-accent active:bg-muted transition-colors"
-															onClick={() => {
-																setMobileExpanded((p) => ({ ...p, tennis: false }));
-																setMobileMenuOpen(false);
-															}}
-														>
-															<span className="text-sm">{t.official_name ?? t.tournament_name ?? t.name}</span>
-														</Link>
-													))}
+							{/* MotoGP */}
+							<div className="mt-1">
+								<button
+									onClick={() => {
+										setMobileExpanded((p) => ({ ...p, motogp: !p.motogp }));
+										if (!otherSportEvents["motogp"] && !mobileExpanded.motogp) {
+											loadEventsForSport("motogp");
+										}
+									}}
+									className="w-full text-left flex items-center justify-between px-3 py-3 text-base font-medium hover:bg-accent rounded-md"
+								>
+									<span>MotoGP</span>
+									<span>{mobileExpanded.motogp ? "−" : "+"}</span>
+								</button>
+								{mobileExpanded.motogp && (
+									<div className="pl-4 pt-1 pb-2 max-h-[60vh] overflow-y-auto">
+										{(otherSportEvents["motogp"] ?? []).length ? (
+											(otherSportEvents["motogp"] ?? [])
+												.slice()
+												.sort((a: any, b: any) => new Date(a.date_start ?? 0).getTime() - new Date(b.date_start ?? 0).getTime())
+												.slice(0, 15)
+												.map((e: any) => (
 													<Link
-														href="/events?sport_type=tennis"
-														className="block px-3 py-2.5 rounded-lg hover:bg-accent active:bg-muted font-medium text-sm border-t border-border/50 mt-2 pt-2"
-														onClick={() => {
-															setMobileExpanded((p) => ({ ...p, tennis: false }));
-															setMobileMenuOpen(false);
-														}}
+														key={e.event_id ?? e.id}
+														href={`/events/${encodeURIComponent(e.event_id ?? e.id)}`}
+														className="block px-3 py-2.5 rounded-md hover:bg-accent active:bg-muted"
+														onClick={() => setMobileExpanded((p) => ({ ...p, motogp: false }))}
 													>
-														View All Tennis
+														<div className="flex items-center gap-2">
+															<CountryFlag countryCode={e.iso_country ?? e.country} size={18} className="flex-shrink-0" />
+															<span className="flex-1 truncate">{e.event_name ?? e.name}</span>
+														</div>
+														<div className="text-xs text-muted-foreground mt-0.5 pl-7">{formatEventDate(e)}</div>
 													</Link>
-												</>
-											) : tennisLoading ? (
-												<div className="px-3 py-2 text-sm text-muted-foreground">Loading tournaments…</div>
-											) : (
-												<div className="px-3 py-2 text-sm text-muted-foreground">No tournaments found</div>
-											)}
-										</div>
-									)}
-								</div>
+												))
+										) : otherSportLoading ? (
+											<div className="px-3 py-2 text-muted-foreground">Loading events…</div>
+										) : (
+											<div className="px-3 py-2 text-muted-foreground">No upcoming events</div>
+										)}
+										<Link
+											href="/events?sport_type=motogp"
+											className="block px-3 py-2.5 rounded-md hover:bg-accent active:bg-muted font-medium mt-2"
+											onClick={() => setMobileExpanded((p) => ({ ...p, motogp: false }))}
+										>
+											View All MotoGP
+										</Link>
+									</div>
+								)}
+							</div>
+
+							{/* Tennis - Expandable with tournaments */}
+							<div className="mt-1">
+								<button
+									onClick={() => {
+										setMobileExpanded((p) => ({ ...p, tennis: !p.tennis }));
+										if (!tennisTournaments.length && !mobileExpanded.tennis) {
+											loadTennisTournaments();
+										}
+									}}
+									className="w-full text-left flex items-center justify-between px-3 py-3 text-base font-medium hover:bg-accent rounded-md"
+								>
+									<span>Tennis</span>
+									<span>{mobileExpanded.tennis ? "−" : "+"}</span>
+								</button>
+								{mobileExpanded.tennis && (
+									<div className="pl-4 pt-1 pb-2 max-h-[60vh] overflow-y-auto">
+										{tennisTournaments.length ? (
+											tennisTournaments.slice(0, 30).map((t: any) => (
+												<Link
+													key={t.tournament_id ?? t.id}
+													href={`/events?tournament_id=${encodeURIComponent(String(t.tournament_id ?? t.id))}`}
+													className="block px-3 py-2.5 rounded-md hover:bg-accent active:bg-muted"
+													onClick={() => setMobileExpanded((p) => ({ ...p, tennis: false }))}
+												>
+													{t.official_name ?? t.tournament_name ?? t.name}
+												</Link>
+											))
+										) : tennisLoading ? (
+											<div className="px-3 py-2 text-muted-foreground">Loading tournaments…</div>
+										) : (
+											<div className="px-3 py-2 text-muted-foreground">No tournaments found</div>
+										)}
+										<Link
+											href="/events?sport_type=tennis"
+											className="block px-3 py-2.5 rounded-md hover:bg-accent active:bg-muted font-medium mt-2"
+											onClick={() => setMobileExpanded((p) => ({ ...p, tennis: false }))}
+										>
+											View All Tennis
+										</Link>
+									</div>
+								)}
 							</div>
 
 							{/* Other Sports */}
-							<div className="mt-6 pt-4 border-t">
-								<div className="px-4 py-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
-									More Sports
-								</div>
-								<div className="space-y-1">
-									{otherSports.slice(0, 12).map((s) => (
-										<Link
-											key={s.href}
-											href={s.href}
-											className="block px-4 py-2.5 rounded-lg hover:bg-accent active:bg-muted transition-colors text-sm"
-											onClick={() => setMobileMenuOpen(false)}
-										>
-											{s.label}
-										</Link>
-									))}
-								</div>
+							<div className="mt-4 pt-3 border-t">
+								<div className="px-3 py-2 font-medium text-muted-foreground text-xs uppercase tracking-wide">Other Sports</div>
+								{otherSports.slice(0, 15).map((s) => (
+									<Link
+										key={s.href}
+										href={s.href}
+										className="block px-3 py-2.5 rounded-md hover:bg-accent active:bg-muted"
+									>
+										{s.label}
+									</Link>
+								))}
 							</div>
 
 							{/* Quick Links */}
-							<div className="mt-6 pt-4 border-t">
-								<Link 
-									href="/events?origin=allevents" 
-									className="block px-4 py-3 rounded-lg active:bg-muted font-medium text-base transition-colors bg-primary/5 hover:bg-primary/10"
-									onClick={() => setMobileMenuOpen(false)}
-								>
-									View All Events
+							<div className="mt-4 pt-3 border-t">
+								<Link href="/events?origin=allevents" className="block rounded-md hover:bg-accent active:bg-muted font-medium">
+									All Events
+								</Link>
+								<Link href="/cart" className="relative flex items-center gap-2 px-3 py-2.5 rounded-md hover:bg-accent active:bg-muted">
+									<ShoppingCart className="w-4 h-4" />
+									<span>Cart</span>
+									{cartItemCount > 0 && (
+										<Badge className="ml-auto h-5 w-5 flex items-center justify-center p-0 text-xs bg-primary text-primary-foreground rounded-full">
+											{cartItemCount > 99 ? "99+" : cartItemCount}
+										</Badge>
+									)}
 								</Link>
 							</div>
 						</nav>
 					</SheetContent>
 				</Sheet>
 
-					{/* Desktop Navigation */}
-					<div className="hidden sm:flex">
-						<NavigationMenu>
-							<NavigationMenuList>
-								{/* Football mega-menu */}
-								<NavigationMenuItem>
-									<NavigationMenuTrigger>Football</NavigationMenuTrigger>
+				<Link href="/" className="flex items-center gap-2">
+					<Image src="/APEX-TICKETS.svg" alt="Apex Tickets" width={160} height={26} priority />
+				</Link>
+
+				<form onSubmit={onSearchSubmit} className="hidden sm:flex flex-1">
+					<Input placeholder="Find your next event" value={query} onChange={(e) => setQuery(e.target.value)} className="bg-background" />
+				</form>
+
+				<div className="ml-auto hidden sm:flex">
+					<NavigationMenu>
+						<NavigationMenuList>
+							{/* Football mega-menu */}
+							<NavigationMenuItem>
+								<NavigationMenuTrigger>Football</NavigationMenuTrigger>
 								<NavigationMenuContent className="p-0">
 									<div className="grid grid-cols-1 md:grid-cols-2 gap-0 min-w-[720px] max-w-[720px]">
 										<div className="border-r p-2 max-h-[420px] overflow-y-auto">
@@ -1013,39 +811,37 @@ export function SiteHeader() {
 							<NavigationMenuItem>
 								<Link href="/events?origin=allevents" className={`px-2 py-1 rounded-md hover:bg-accent text-sm ${pathname === "/events" ? "bg-accent" : ""}`}>All events</Link>
 							</NavigationMenuItem>
-							</NavigationMenuList>
-						</NavigationMenu>
-					</div>
+						</NavigationMenuList>
+					</NavigationMenu>
+				</div>
 
-					{/* Desktop Account & Cart */}
-					<div className="hidden sm:flex items-center gap-2">
-						<DropdownMenu>
-							<DropdownMenuTrigger className="rounded-md px-3 py-2 text-sm hover:bg-accent flex items-center gap-2 transition-colors">
-								<User className="w-4 h-4" />
-								<span>Account</span>
-							</DropdownMenuTrigger>
-							<DropdownMenuContent align="end">
-								<DropdownMenuItem asChild>
-									<Link href="#">Sign in</Link>
-								</DropdownMenuItem>
-								<DropdownMenuItem asChild>
-									<Link href="#">Orders</Link>
-								</DropdownMenuItem>
-							</DropdownMenuContent>
-						</DropdownMenu>
-						<Link 
-							href="/cart" 
-							className="relative rounded-md bg-primary text-primary-foreground px-3 py-2 text-sm hover:bg-primary/90 transition-colors flex items-center gap-2"
-						>
-							<ShoppingCart className="w-4 h-4" />
-							<span>Cart</span>
-							{cartItemCount > 0 && (
-								<Badge className="absolute -top-1.5 -right-1.5 h-5 w-5 flex items-center justify-center p-0 text-xs bg-primary text-primary-foreground rounded-full border-2 border-background">
-									{cartItemCount > 99 ? "99+" : cartItemCount}
-								</Badge>
-							)}
-						</Link>
-					</div>
+				<div className="hidden sm:flex items-center gap-2 ml-3">
+					<DropdownMenu>
+						<DropdownMenuTrigger className="rounded-md px-3 py-2 text-sm hover:bg-accent flex items-center gap-2 transition-colors">
+							<User className="w-4 h-4" />
+							<span>Account</span>
+						</DropdownMenuTrigger>
+						<DropdownMenuContent align="end">
+							<DropdownMenuItem asChild>
+								<Link href="#">Sign in</Link>
+							</DropdownMenuItem>
+							<DropdownMenuItem asChild>
+								<Link href="#">Orders</Link>
+							</DropdownMenuItem>
+						</DropdownMenuContent>
+					</DropdownMenu>
+					<Link 
+						href="/cart" 
+						className="relative rounded-md bg-primary text-primary-foreground px-3 py-2 text-sm hover:bg-primary/90 transition-colors flex items-center gap-2"
+					>
+						<ShoppingCart className="w-4 h-4" />
+						<span>Cart</span>
+						{cartItemCount > 0 && (
+							<Badge className="absolute -top-1.5 -right-1.5 h-5 w-5 flex items-center justify-center p-0 text-xs bg-primary text-primary-foreground rounded-full border-2 border-background">
+								{cartItemCount > 99 ? "99+" : cartItemCount}
+							</Badge>
+						)}
+					</Link>
 				</div>
 			</div>
 		</header>

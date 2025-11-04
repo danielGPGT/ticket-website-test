@@ -14,8 +14,22 @@ import {
 	Globe, Building2, Trophy, Landmark, ChevronDown, ChevronUp, Activity, Star, Flame, CircleDot
 } from "lucide-react";
 import { CountryFlag } from "@/components/country-flag";
-import { useDebounce } from "@/hooks/use-debounce";
-import type { FilterState } from "@/hooks/use-filters";
+import { getCountryName } from "@/lib/country-flags";
+
+type FilterState = {
+	sportType: string[];
+	tournamentId: string[];
+	countryCode: string[];
+	city: string[];
+	venue: string[];
+	dateFrom: string;
+	dateTo: string;
+	priceMin: number;
+	priceMax: number;
+	query: string;
+	popularEvents: boolean;
+	eventStatus: string[]; // "on_sale", "coming_soon", "sales_closed", "not_confirmed"
+};
 
 type FilterOption = {
 	value: string;
@@ -28,10 +42,25 @@ type EventsFiltersProps = {
 	initialFilters?: Partial<FilterState>;
 	events?: any[]; // Current events for dynamic counts
 	isMobile?: boolean; // If true, remove border and shadow for mobile drawer
+	hiddenFilters?: string[]; // Array of filter section IDs to hide (e.g., ["sport"])
 };
 
-// Re-export FilterState type for backward compatibility
-export type { FilterState };
+// Custom debounce hook
+function useDebounce<T>(value: T, delay: number): T {
+	const [debouncedValue, setDebouncedValue] = useState<T>(value);
+
+	useEffect(() => {
+		const handler = setTimeout(() => {
+			setDebouncedValue(value);
+		}, delay);
+
+		return () => {
+			clearTimeout(handler);
+		};
+	}, [value, delay]);
+
+	return debouncedValue;
+}
 
 // Format sport type for display
 function formatSportType(sportType: string): string {
@@ -55,7 +84,7 @@ function formatSportType(sportType: string): string {
 	return sportType.replace(/_/g, " ").replace(/\b\w/g, (char) => char.toUpperCase());
 }
 
-export function EventsFilters({ onFilterChange, initialFilters = {}, events = [], isMobile = false }: EventsFiltersProps) {
+export function EventsFilters({ onFilterChange, initialFilters = {}, events = [], isMobile = false, hiddenFilters = [] }: EventsFiltersProps) {
 	// Expandable sections state - expand key sections by default
 	const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
 		popularEvents: false,
@@ -141,7 +170,9 @@ export function EventsFilters({ onFilterChange, initialFilters = {}, events = []
 	// Sync debounced search query
 	useEffect(() => {
 		if (debouncedSearchQuery !== filters.query) {
-			console.log("[EventsFilters] Search query changed:", debouncedSearchQuery);
+			if (process.env.NODE_ENV === "development") {
+				console.log("[EventsFilters] Search query changed:", debouncedSearchQuery);
+			}
 			setFilters((prev) => {
 				const newFilters = { ...prev, query: debouncedSearchQuery };
 				onFilterChange(newFilters);
@@ -179,7 +210,9 @@ export function EventsFilters({ onFilterChange, initialFilters = {}, events = []
 		// Sort alphabetically
 		list.sort((a, b) => a.label.localeCompare(b.label));
 		
-		console.log("[EventsFilters] Extracted", list.length, "sports from events:", list.map(s => s.label));
+		if (process.env.NODE_ENV === "development") {
+			console.log("[EventsFilters] Extracted", list.length, "sports from events:", list.map(s => s.label));
+		}
 		setSports(list);
 		setLoading(prev => ({ ...prev, sports: false }));
 	}, [events]);
@@ -247,7 +280,9 @@ export function EventsFilters({ onFilterChange, initialFilters = {}, events = []
 			return a.label.localeCompare(b.label);
 		});
 		
-		console.log("[EventsFilters] Extracted", list.length, "tournaments from events");
+		if (process.env.NODE_ENV === "development") {
+			console.log("[EventsFilters] Extracted", list.length, "tournaments from events");
+		}
 		setTournaments(list);
 		setLoading(prev => ({ ...prev, tournaments: false }));
 	}, [events]);
@@ -269,10 +304,13 @@ export function EventsFilters({ onFilterChange, initialFilters = {}, events = []
 						if (!code || code.length < 2 || seen.has(code)) return;
 						seen.add(code);
 						
-						const name = String(c.name ?? c.country_name ?? code).trim();
-						if (!name) return;
+						// Use country name from API if available, otherwise use our mapping
+						const apiName = String(c.name ?? c.country_name ?? "").trim();
+						const countryName = apiName || getCountryName(code);
 						
-						list.push({ value: code, label: name });
+						if (!countryName) return;
+						
+						list.push({ value: code, label: countryName });
 					});
 					
 					setCountries(list.sort((a, b) => a.label.localeCompare(b.label)));
@@ -307,7 +345,7 @@ export function EventsFilters({ onFilterChange, initialFilters = {}, events = []
 		const countryList: FilterOption[] = Array.from(countryMap.entries())
 			.map(([code, count]) => ({
 				value: code,
-				label: code, // Will be replaced with country name lookup
+				label: getCountryName(code), // Use country name mapping
 				count,
 			}))
 			.sort((a, b) => b.count! - a.count!);
@@ -579,13 +617,14 @@ export function EventsFilters({ onFilterChange, initialFilters = {}, events = []
 						)}
 					</FilterSection>
 
-					{/* Sport */}
-					<FilterSection
-						id="sport"
-						icon={Activity}
-						title="Sport"
-						isExpanded={expandedSections.sport}
-					>
+					{/* Sport - Hidden if in hiddenFilters */}
+					{!hiddenFilters.includes("sport") && (
+						<FilterSection
+							id="sport"
+							icon={Activity}
+							title="Sport"
+							isExpanded={expandedSections.sport}
+						>
 						{loading.sports ? (
 							<div className="text-sm text-muted-foreground py-2">Loading...</div>
 						) : sports.length === 0 ? (
@@ -607,7 +646,8 @@ export function EventsFilters({ onFilterChange, initialFilters = {}, events = []
 								</label>
 							))
 						)}
-					</FilterSection>
+						</FilterSection>
+					)}
 
 					{/* Country */}
 					<FilterSection

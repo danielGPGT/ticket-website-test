@@ -23,10 +23,10 @@ export function SiteFooter() {
 						<div className="text-sm font-semibold mb-3">Explore</div>
 						<ul className="space-y-2 text-sm">
 							<li><Link className="hover:underline" href="/events">All Events</Link></li>
-							<li><Link className="hover:underline" href="/events?sport_type=formula1">Formula 1</Link></li>
-							<li><Link className="hover:underline" href="/events?sport_type=football">Football</Link></li>
-							<li><Link className="hover:underline" href="/events?sport_type=motogp">MotoGP</Link></li>
-							<li><Link className="hover:underline" href="/events?sport_type=tennis">Tennis</Link></li>
+							<li><Link className="hover:underline" href="/formula-1">Formula 1</Link></li>
+							<li><Link className="hover:underline" href="/football">Football</Link></li>
+							<li><Link className="hover:underline" href="/motogp">MotoGP</Link></li>
+							<li><Link className="hover:underline" href="/tennis">Tennis</Link></li>
 						</ul>
 					</div>
 

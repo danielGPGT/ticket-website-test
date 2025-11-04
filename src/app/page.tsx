@@ -34,7 +34,7 @@ export default function Home() {
 						subtitle="Explore tickets for your favorite sports"
 					/>
 					<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-						<Link href="/events?sport_type=formula1">
+						<Link href="/formula-1">
 							<Card className="group relative overflow-hidden border-0 shadow-md hover:shadow-xl transition-all duration-300 cursor-pointer">
 								<div className="relative h-48 overflow-hidden">
 									<Image
@@ -52,7 +52,7 @@ export default function Home() {
 								</CardContent>
 							</Card>
 						</Link>
-						<Link href="/events?sport_type=football">
+						<Link href="/football">
 							<Card className="group relative overflow-hidden border-0 shadow-md hover:shadow-xl transition-all duration-300 cursor-pointer">
 								<div className="relative h-48 overflow-hidden">
 									<Image
@@ -70,7 +70,7 @@ export default function Home() {
 								</CardContent>
 							</Card>
 						</Link>
-						<Link href="/events?sport_type=motogp">
+						<Link href="/motogp">
 							<Card className="group relative overflow-hidden border-0 shadow-md hover:shadow-xl transition-all duration-300 cursor-pointer">
 								<div className="relative h-48 overflow-hidden">
         <Image
@@ -88,7 +88,7 @@ export default function Home() {
 								</CardContent>
 							</Card>
 						</Link>
-						<Link href="/events?sport_type=tennis">
+						<Link href="/tennis">
 							<Card className="group relative overflow-hidden border-0 shadow-md hover:shadow-xl transition-all duration-300 cursor-pointer">
 								<div className="relative h-48 overflow-hidden">
             <Image

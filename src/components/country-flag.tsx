@@ -42,7 +42,7 @@ export function CountryFlag({
 	const hasResponsiveSizing = className.includes('w-') || className.includes('h-');
 	
 	// Only use inline styles if no responsive sizing classes are provided
-	const inlineStyle = hasResponsiveSizing 
+	const inlineStyle: React.CSSProperties = hasResponsiveSizing 
 		? { objectFit: "cover", flexShrink: 0 }
 		: { 
 				objectFit: "cover", 

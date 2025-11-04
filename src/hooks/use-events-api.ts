@@ -90,19 +90,19 @@ async function fetchAllPages(
 			if (!nextPage || nextPage === "string" || nextPage === url) {
 				url = null;
 			} else if (nextPage.startsWith("http")) {
-				const nextUrl = new URL(nextPage);
+				const nextUrl: URL = new URL(nextPage);
 				const nextParams = new URLSearchParams(nextUrl.searchParams);
 				nextParams.set("origin", "allevents");
 				url = `/api/xs2/events?${nextParams.toString()}`;
 			} else {
 				try {
-					const nextUrl = new URL(nextPage, "https://api.xs2event.com/v1/");
+					const nextUrl: URL = new URL(nextPage, "https://api.xs2event.com/v1/");
 					const nextParams = new URLSearchParams(nextUrl.searchParams);
 					nextParams.set("origin", "allevents");
 					url = `/api/xs2/events?${nextParams.toString()}`;
 				} catch {
 					if (nextPage.includes("=")) {
-						const nextParams = new URLSearchParams(nextPage);
+						const nextParams: URLSearchParams = new URLSearchParams(nextPage);
 						nextParams.set("origin", "allevents");
 						url = `/api/xs2/events?${nextParams.toString()}`;
 					} else {

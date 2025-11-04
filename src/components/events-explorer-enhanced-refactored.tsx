@@ -192,7 +192,7 @@ export function EventsExplorerEnhanced() {
 		<div className="relative">
 			<div className="flex flex-col lg:flex-row gap-6">
 				{/* Filters Sidebar - Hidden on mobile, visible on desktop */}
-				<aside className="hidden lg:block w-100 shrink-0">
+				<aside className="hidden lg:block w-80 shrink-0">
 					<EventsFilters 
 						onFilterChange={handleFilterChange} 
 						initialFilters={filters} 

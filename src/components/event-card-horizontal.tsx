@@ -5,7 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CountryFlag } from "@/components/country-flag";
-import { Clock, Bell, ArrowRight, Flame } from "lucide-react";
+import { Clock, Bell, ArrowRight, Flame, Calendar } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type Props = {
@@ -186,29 +186,35 @@ export function EventCardHorizontal({
 							{isPopular && (
 								<Badge 
 									variant="secondary" 
-									className="absolute -top-2 left-4 sm:left-6 font-semibold bg-secondary text-secondary-foreground rounded flex items-center gap-1.5 px-2 py-0.5 text-xs"
+									className="absolute -top-3 left-4 sm:left-6 font-semibold bg-secondary text-secondary-foreground rounded flex items-center gap-1.5 px-2 py-0.5 text-xs"
 								>
 									<Flame className="w-3 h-3" />
-									<span className="hidden sm:inline">Popular</span>
+									<span className="inline">Popular</span>
 								</Badge>
 							)}
 							
+							{/* Country Flag - Top Right on All Screen Sizes */}
+							{countryCode && (
+								<div className="absolute top-4 right-4">
+									<CountryFlag 
+										countryCode={countryCode} 
+										className="w-8 h-8 sm:w-10 sm:h-10 border border-border/50" 
+									/>
+								</div>
+							)}
+							
 							<div className="space-y-2.5 sm:space-y-3">
-								{/* Date and Time Row - more compact on mobile */}
+								{/* Event Title - Top Left, Consistent Across All Screen Sizes */}
+								<h3 className="font-bold leading-tight text-foreground group-hover:text-primary transition-colors text-sm sm:text-base pr-12 sm:pr-8">
+									{name}
+								</h3>
+
+								{/* Date and Time Row - Below Event Name on All Screen Sizes */}
 								<div className="flex items-start gap-2.5 sm:gap-3">
-									{countryCode && (
-										<div className="mt-0.5 shrink-0">
-											<CountryFlag 
-												countryCode={countryCode} 
-												size={20}
-												className="sm:w-6 sm:h-6 w-5 h-5 border border-border/50" 
-											/>
-										</div>
-									)}
 									<div className="flex-1 min-w-0 space-y-1">
 										{/* Time - stack on mobile, inline on larger screens */}
 										{(timeStart || timeEnd) && (
-											<div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-1.5 text-muted-foreground text-xs sm:text-sm">
+											<div className="flex flex-col gap-1 sm:gap-1.5 text-muted-foreground text-xs sm:text-sm">
 												<div className="flex items-center gap-1.5">
 													<Clock className="w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0" />
 													<span className="whitespace-nowrap">
@@ -220,9 +226,13 @@ export function EventCardHorizontal({
 													</span>
 												</div>
 												{date && (
-													<span className="text-xs sm:text-sm font-medium text-foreground whitespace-nowrap">
-														{formatDateRange(date, dateEnd)}
-													</span>
+													<div className="flex items-center gap-1.5">
+														<Calendar className="w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0" />
+														<span className="whitespace-nowrap">
+															{formatDateRange(date, dateEnd)}
+														</span>
+													</div>
+										
 												)}
 											</div>
 										)}
@@ -234,13 +244,6 @@ export function EventCardHorizontal({
 										)}
 									</div>
 								</div>
-
-
-
-								{/* Event Title - responsive text size */}
-								<h3 className="font-bold leading-tight text-foreground group-hover:text-primary transition-colors text-sm sm:text-base pr-8">
-									{name}
-								</h3>
 
 								{/* Tags - more compact on mobile */}
 								<div className="flex flex-wrap gap-1.5 sm:gap-2">

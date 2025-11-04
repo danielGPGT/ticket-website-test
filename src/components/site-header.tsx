@@ -1052,4 +1052,3 @@ export function SiteHeader() {
 	);
 }
 
-

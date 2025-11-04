@@ -430,7 +430,7 @@ export function EventDetailContent({ event, tickets, categories, sportPath }: Ev
 
 						const labelFor = (k: string) => {
 							const map: Record<string, string> = {
-								grandstand: "Grandstands",
+								grandstand: "Grandstand",
 								hospitality: "Hospitality",
 								generaladmission: "General Admission",
 								camping: "Camping",
@@ -491,8 +491,12 @@ export function EventDetailContent({ event, tickets, categories, sportPath }: Ev
 											<Accordion type="single" collapsible className="w-full space-y-2">
 												{typeToEntries.get(typeKey)!.map(([categoryId, arr]) => {
 													const meta = categoryIdToMeta.get(categoryId);
-													const displayName = meta?.name?.trim();
+													let displayName = meta?.name?.trim();
 													if (!displayName) return null;
+													// If displayName is only one character, prefix with category type
+													if (displayName.length === 1) {
+														displayName = `${labelFor(typeKey)} ${displayName}`;
+													}
 													const fromPrice = Math.min(
 														...arr.map((g: any) => Number(g.min_price ?? Number.POSITIVE_INFINITY))
 													);

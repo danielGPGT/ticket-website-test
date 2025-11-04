@@ -14,21 +14,8 @@ import {
 	Globe, Building2, Trophy, Landmark, ChevronDown, ChevronUp, Activity, Star, Flame, CircleDot
 } from "lucide-react";
 import { CountryFlag } from "@/components/country-flag";
-
-type FilterState = {
-	sportType: string[];
-	tournamentId: string[];
-	countryCode: string[];
-	city: string[];
-	venue: string[];
-	dateFrom: string;
-	dateTo: string;
-	priceMin: number;
-	priceMax: number;
-	query: string;
-	popularEvents: boolean;
-	eventStatus: string[]; // "on_sale", "coming_soon", "sales_closed", "not_confirmed"
-};
+import { useDebounce } from "@/hooks/use-debounce";
+import type { FilterState } from "@/hooks/use-filters";
 
 type FilterOption = {
 	value: string;
@@ -43,22 +30,8 @@ type EventsFiltersProps = {
 	isMobile?: boolean; // If true, remove border and shadow for mobile drawer
 };
 
-// Custom debounce hook
-function useDebounce<T>(value: T, delay: number): T {
-	const [debouncedValue, setDebouncedValue] = useState<T>(value);
-
-	useEffect(() => {
-		const handler = setTimeout(() => {
-			setDebouncedValue(value);
-		}, delay);
-
-		return () => {
-			clearTimeout(handler);
-		};
-	}, [value, delay]);
-
-	return debouncedValue;
-}
+// Re-export FilterState type for backward compatibility
+export type { FilterState };
 
 // Format sport type for display
 function formatSportType(sportType: string): string {

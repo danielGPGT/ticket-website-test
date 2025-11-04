@@ -3,15 +3,11 @@
 import { Suspense } from "react";
 import { EventsExplorerEnhanced } from "@/components/events-explorer-enhanced";
 import { SectionHeader } from "@/components/section-header";
-import { Loader2 } from "lucide-react";
+import { EventsListSkeleton } from "@/components/events/event-card-skeleton";
 
 function EventsExplorerWithSuspense() {
 	return (
-		<Suspense fallback={
-			<div className="flex items-center justify-center py-20">
-				<Loader2 className="w-8 h-8 animate-spin text-primary" />
-			</div>
-		}>
+		<Suspense fallback={<EventsListSkeleton count={6} />}>
 			<EventsExplorerEnhanced />
 		</Suspense>
 	);

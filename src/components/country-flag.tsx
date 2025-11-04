@@ -38,19 +38,27 @@ export function CountryFlag({
 	const flagPath = `/images/country-flags/${code.toLowerCase()}.svg`;
 	const countryName = alt ?? `Flag of ${code}`;
 	
+	// Check if className contains width/height classes (responsive sizing)
+	const hasResponsiveSizing = className.includes('w-') || className.includes('h-');
+	
+	// Only use inline styles if no responsive sizing classes are provided
+	const inlineStyle: React.CSSProperties = hasResponsiveSizing 
+		? { objectFit: "cover", flexShrink: 0 }
+		: { 
+				objectFit: "cover", 
+				width: `${size}px`, 
+				height: `${size}px`,
+				flexShrink: 0,
+			};
+	
 	return (
 		<img
 			src={flagPath}
 			alt={countryName}
-			width={size}
-			height={size}
+			width={hasResponsiveSizing ? undefined : size}
+			height={hasResponsiveSizing ? undefined : size}
 			className={`rounded-full border ${className}`}
-			style={{
-				objectFit: "cover",
-				width: `${size}px`,
-				height: `${size}px`,
-				flexShrink: 0,
-			}}
+			style={inlineStyle}
 			loading="lazy"
 			onError={(e) => {
 				// Fallback: hide image if flag file doesn't exist

@@ -538,7 +538,7 @@ export function EventDetailContent({ event, tickets, categories, sportPath }: Ev
 																		<div className="flex items-center gap-2 shrink-0">
 																			<div className="text-xs sm:text-xs font-medium text-foreground">From £{isFinite(fromPrice) ? fromPrice.toFixed(0) : "-"}</div>
 																			<div className="flex items-center gap-1 text-xs text-muted-foreground group-hover:text-primary transition-colors">
-																				<span className="hidden sm:inline">More info</span>
+																				<span className="inline">More info</span>
 																				<svg
 																					className="h-4 w-4 shrink-0 transition-transform duration-200 group-data-[state=open]:rotate-180 group-hover:text-primary"
 																					xmlns="http://www.w3.org/2000/svg"

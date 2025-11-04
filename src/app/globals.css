@@ -477,6 +477,11 @@ body {
   transform: rotate(180deg);
 }
 
+/* Hide default chevron for category accordions (they have custom "More info" + chevron) */
+[id="tickets"] .accordion-chevron {
+  display: none;
+}
+
 /* Hide scrollbar utility */
 .scrollbar-hide {
   -ms-overflow-style: none;

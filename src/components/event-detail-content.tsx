@@ -501,7 +501,7 @@ export function EventDetailContent({ event, tickets, categories, sportPath }: Ev
 															key={categoryId}
 															data-event-id={String(event.id ?? event.event_id ?? "")}
 															data-category-id={categoryId}
-															className={`border-none transition-all relative p-0 ${categoryIdToFull.get(categoryId)?.highlight_type === "xs2event_choice" ? 'mt-4' : ''}`}
+															className={`border-none transition-all bg-transparent relative p-0 ${categoryIdToFull.get(categoryId)?.highlight_type === "xs2event_choice" ? 'mt-4' : ''}`}
 														>
 															{(() => {
 																				const full = categoryIdToFull.get(categoryId) ?? {};
@@ -524,14 +524,31 @@ export function EventDetailContent({ event, tickets, categories, sportPath }: Ev
 																					</>
 																				) : null;
 																			})()}
-															<AccordionItem value={categoryId} className="border-0 bg-card z-1 py-1 rounded-sm">
-																<AccordionTrigger className="px-3 sm:px-4 py-2 hover:no-underline data-[state=open]:border-b data-[state=open]:border-border">
-																	<div className="flex items-center justify-between w-full gap-2 pr-2">
+															<AccordionItem value={categoryId} className="bg-card z-1 py-1 rounded-sm border">
+																<AccordionTrigger className="px-3 sm:px-4 py-2 hover:no-underline data-[state=open]:border-b data-[state=open]:border-border group">
+																	<div className="flex items-center justify-between w-full gap-2">
 																		<div className="flex items-center gap-2 flex-wrap relative">
 																			<h3 className="font-semibold text-sm sm:text-sm text-foreground">{displayName}</h3>
 																			
 																		</div>
-																		<div className="shrink-0 text-xs sm:text-xs font-medium text-foreground">From £{isFinite(fromPrice) ? fromPrice.toFixed(0) : "-"}</div>
+																		<div className="flex items-center gap-2 shrink-0">
+																			<div className="text-xs sm:text-xs font-medium text-foreground">From £{isFinite(fromPrice) ? fromPrice.toFixed(0) : "-"}</div>
+																			<div className="flex items-center gap-1 text-xs text-muted-foreground group-hover:text-primary transition-colors">
+																				<span className="hidden sm:inline">More info</span>
+																				<svg
+																					className="h-4 w-4 shrink-0 transition-transform duration-200 group-data-[state=open]:rotate-180 group-hover:text-primary"
+																					xmlns="http://www.w3.org/2000/svg"
+																					viewBox="0 0 24 24"
+																					fill="none"
+																					stroke="currentColor"
+																					strokeWidth="2"
+																					strokeLinecap="round"
+																					strokeLinejoin="round"
+																				>
+																					<path d="m6 9 6 6 6-6"/>
+																				</svg>
+																			</div>
+																		</div>
 																	</div>
 																</AccordionTrigger>
 												<AccordionContent className="pt-0">

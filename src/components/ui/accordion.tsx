@@ -29,7 +29,7 @@ const AccordionTrigger = React.forwardRef<
     >
       {children}
       <svg
-        className="h-4 w-4 shrink-0 transition-transform duration-200 ease-out accordion-chevron"
+        className="h-4 w-4 shrink-0 transition-transform duration-200 ease-out accordion-chevron hidden"
         viewBox="0 0 24 24"
         fill="none"
         stroke="currentColor"

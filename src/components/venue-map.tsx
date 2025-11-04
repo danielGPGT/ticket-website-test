@@ -433,64 +433,51 @@ export function VenueMap({ venueId, eventId, categories, tickets = [], className
                 }
               };
               
-              // Find all accordion items with "per person" text (category type accordions)
-              const allCategoryTypeItems = Array.from(document.querySelectorAll('[data-state]')).filter((item) => {
-                const trigger = item.querySelector('button[type="button"], [role="button"]');
-                if (trigger) {
-                  const text = trigger.textContent || '';
-                  return text.includes('per person');
-                }
-                return false;
-              }) as HTMLElement[];
+              // Find all tab triggers (category type tabs)
+              const allTabTriggers = Array.from(document.querySelectorAll('[data-slot="tabs-trigger"]')) as HTMLElement[];
               
-              console.log(`[VenueMap] Found ${allCategoryTypeItems.length} category type accordions`);
+              console.log(`[VenueMap] Found ${allTabTriggers.length} category type tabs`);
               
               // Find the one that matches the label text
-              let targetAccordion: HTMLElement | null = null;
-              for (const item of allCategoryTypeItems) {
-                const trigger = item.querySelector('button[type="button"], [role="button"]');
-                if (trigger) {
-                  const text = trigger.textContent || '';
-                  if (text.includes(labelText)) {
-                    targetAccordion = item;
-                    console.log(`[VenueMap] Found matching category type accordion: "${labelText}"`);
-                    break;
-                  }
+              let targetTab: HTMLElement | null = null;
+              for (const tab of allTabTriggers) {
+                const text = tab.textContent || '';
+                if (text.includes(labelText)) {
+                  targetTab = tab;
+                  console.log(`[VenueMap] Found matching category type tab: "${labelText}"`);
+                  break;
                 }
               }
               
-              if (targetAccordion) {
-                const isOpen = targetAccordion.getAttribute("data-state") === "open";
-                if (!isOpen) {
-                  const trigger = targetAccordion.querySelector('button[type="button"], [role="button"]') as HTMLElement;
-                  if (trigger) {
-                    console.log(`[VenueMap] Opening category type accordion: "${labelText}"`);
-                    trigger.click();
-                    
-                    // Wait for accordion to open, then check for card and open category accordion
-                    setTimeout(() => {
-                      const card = findCategoryCard();
-                      if (card) {
-                        console.log(`[VenueMap] ✓ Category card found after opening category type accordion!`);
-                        openCategoryAccordion(card);
-                      } else {
-                        console.log("[VenueMap] Card still not found after opening category type accordion");
-                        // Try again after a longer delay
-                        setTimeout(() => {
-                          const retryCard = findCategoryCard();
-                          if (retryCard) {
-                            console.log(`[VenueMap] ✓ Category card found on second retry!`);
-                            openCategoryAccordion(retryCard);
-                          } else {
-                            console.log("[VenueMap] Card still not found after second retry");
-                          }
-                        }, 500);
-                      }
-                    }, 400);
-                  }
+              if (targetTab) {
+                const isActive = targetTab.getAttribute("data-state") === "active";
+                if (!isActive) {
+                  console.log(`[VenueMap] Opening category type tab: "${labelText}"`);
+                  targetTab.click();
+                  
+                  // Wait for tab to switch, then check for card and open category accordion
+                  setTimeout(() => {
+                    const card = findCategoryCard();
+                    if (card) {
+                      console.log(`[VenueMap] ✓ Category card found after opening category type tab!`);
+                      openCategoryAccordion(card);
+                    } else {
+                      console.log("[VenueMap] Card still not found after opening category type tab");
+                      // Try again after a longer delay
+                      setTimeout(() => {
+                        const retryCard = findCategoryCard();
+                        if (retryCard) {
+                          console.log(`[VenueMap] ✓ Category card found on second retry!`);
+                          openCategoryAccordion(retryCard);
+                        } else {
+                          console.log("[VenueMap] Card still not found after second retry");
+                        }
+                      }, 500);
+                    }
+                  }, 300);
                 } else {
-                  // Category type accordion is already open - just find and open the category accordion
-                  console.log(`[VenueMap] Category type accordion "${labelText}" already open, finding category accordion...`);
+                  // Category type tab is already active - just find and open the category accordion
+                  console.log(`[VenueMap] Category type tab "${labelText}" already active, finding category accordion...`);
                   const card = findCategoryCard();
                   if (card) {
                     openCategoryAccordion(card);
@@ -506,11 +493,10 @@ export function VenueMap({ venueId, eventId, categories, tickets = [], className
                   }
                 }
               } else {
-                console.log(`[VenueMap] Could not find category type accordion with label "${labelText}"`);
-                // Debug: show all category type accordions
-                allCategoryTypeItems.forEach((item, idx) => {
-                  const trigger = item.querySelector('button[type="button"], [role="button"]');
-                  console.log(`[VenueMap] Category type accordion ${idx}:`, trigger?.textContent?.trim());
+                console.log(`[VenueMap] Could not find category type tab with label "${labelText}"`);
+                // Debug: show all category type tabs
+                allTabTriggers.forEach((tab, idx) => {
+                  console.log(`[VenueMap] Category type tab ${idx}:`, tab.textContent?.trim());
                 });
               }
             } else {

@@ -68,15 +68,15 @@ export function TicketGroupRow({
       )}
     >
       <div className="px-2 py-1">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+        <div className="flex flex-row sm:flex-row sm:items-center sm:justify-between gap-2">
           {/* Left: Ticket Info */}
           <div className="flex-1 min-w-0">
             <div className="space-y-1">
-              <span className="text-xs font-semibold text-foreground">
+              <span className="text-xs font-bold text-foreground">
                 {ticketType}
               </span>{" "}
               <div className="text-left">
-                <div className="font-bold text-sm text-foreground">
+                <div className="font-semibold text-sm text-secondary">
                   £{minPrice.toFixed(0)}
                 </div>
               </div>
@@ -85,7 +85,7 @@ export function TicketGroupRow({
           </div>
 
 
-          <div className="flex items-center gap-2 w-full sm:w-auto">
+          <div className="flex items-center gap-2 sm:w-auto">
             <Select
               value={String(qty)}
               onValueChange={(value) =>
@@ -94,7 +94,7 @@ export function TicketGroupRow({
               disabled={isOutOfStock}
             >
               <SelectTrigger className={cn(
-                "h-9 sm:h-8 w-16 sm:w-14 text-xs px-1.5 sm:px-2 font-medium border-2 transition-all flex-shrink-0",
+                "h-9 sm:h-8 w-14 sm:w-14 text-xs px-1.5 sm:px-2 font-medium border-none transition-all flex-shrink-0",
                 "hover:border-primary/50 focus:border-primary",
                 "bg-background hover:bg-accent/50",
                 isOutOfStock && "opacity-50 cursor-not-allowed"
@@ -145,7 +145,7 @@ export function TicketGroupRow({
                 <>
                   <ShoppingCart className="w-3.5 h-3.5" />
                   <span className="hidden sm:inline">Add to Cart</span>
-                  <span className="sm:hidden">Add to Cart</span>
+                  <span className="sm:hidden">Add</span>
                 </>
               )}
             </Button>

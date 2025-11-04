@@ -4,10 +4,11 @@ import { groupTickets, formatTicketType } from "@/lib/xs2-api";
 import { TicketGroupRow } from "@/components/ticket-group-row";
 import { Card, CardContent } from "@/components/ui/card";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CountryFlag } from "@/components/country-flag";
-import { Calendar, MapPin, Clock, Trophy, ArrowLeft, Flame, ShoppingCart, Tv, Umbrella, Hash } from "lucide-react";
+import { Calendar, MapPin, Clock, Trophy, ArrowLeft, Flame, ShoppingCart, Tv, Umbrella, Hash, Armchair } from "lucide-react";
 import Link from "next/link";
 import { EventImageWithFallback } from "@/components/event-image-with-fallback";
 import { SectionHeader } from "@/components/section-header";
@@ -394,10 +395,10 @@ export function EventDetailContent({ event, tickets, categories, sportPath }: Ev
 				<div className="grid grid-cols-1 lg:grid-cols-5 gap-6 lg:gap-8">
 					{/* Left Column: Tickets Section */}
 					<div id="tickets" className="lg:col-span-2 space-y-6 scroll-mt-8">
-						<div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-2 border-b">
-							<h2 className="text-xl md:text-xl font-bold text-foreground">Available Tickets</h2>
+						<div className="flex flex-row justify-between sm:items-center sm:justify-between gap-3 pb-2 border-b">
+							<h2 className="text-md md:text-xl font-bold text-foreground">Available Tickets</h2>
 							{groups.length > 0 && (
-								<Badge variant="secondary" className="text-sm w-fit">
+								<Badge variant="secondary" className="w-fit">
 									{groups.length} {groups.length === 1 ? "option" : "options"}
 								</Badge>
 							)}
@@ -444,35 +445,50 @@ export function EventDetailContent({ event, tickets, categories, sportPath }: Ev
 						};
 
 						return (
-							<Accordion type="single" collapsible className="w-full space-y-2">
-								{typeOrder.filter((t) => typeToEntries.has(t)).map((typeKey) => {
-									// Calculate minimum price across all categories in this type
-									const entries = typeToEntries.get(typeKey)!;
-									const allPrices: number[] = [];
-									for (const [, arr] of entries) {
-										for (const g of arr) {
-											const price = Number(g.min_price ?? Number.POSITIVE_INFINITY);
-											if (isFinite(price)) {
-												allPrices.push(price);
+							<div className="relative w-full">
+								{/* Gradient fade indicators for mobile - show there's more content */}
+								<div className="absolute left-0 top-0 bottom-0 w-8   pointer-events-none z-10 sm:hidden" />
+								<div className="absolute right-0 top-0 bottom-0 w-8  pointer-events-none z-10 sm:hidden" />
+								<Tabs defaultValue={typeOrder.find((t) => typeToEntries.has(t)) || ""} className="w-full">
+									<TabsList className="w-full justify-start h-auto p-1 bg-muted/50 overflow-x-auto scrollbar-hide scroll-smooth snap-x snap-mandatory sm:snap-none">
+									{typeOrder.filter((t) => typeToEntries.has(t)).map((typeKey) => {
+										// Calculate minimum price across all categories in this type
+										const entries = typeToEntries.get(typeKey)!;
+										const allPrices: number[] = [];
+										for (const [, arr] of entries) {
+											for (const g of arr) {
+												const price = Number(g.min_price ?? Number.POSITIVE_INFINITY);
+												if (isFinite(price)) {
+													allPrices.push(price);
+												}
 											}
 										}
-									}
-									const typeMinPrice = allPrices.length > 0 ? Math.min(...allPrices) : Number.POSITIVE_INFINITY;
+										const typeMinPrice = allPrices.length > 0 ? Math.min(...allPrices) : Number.POSITIVE_INFINITY;
+										
+										return (
+											<TabsTrigger 
+												key={typeKey} 
+												value={typeKey} 
+												className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground px-3 py-2 text-xs sm:text-sm font-semibold shrink-0 snap-start touch-pan-x"
+											>
+												<div className="flex flex-col items-start gap-0.5">
+													<span>{labelFor(typeKey)}</span>
+													{isFinite(typeMinPrice) && (
+														<span className="text-[10px] font-normal opacity-80">
+															From £{typeMinPrice.toFixed(0)}
+														</span>
+													)}
+												</div>
+											</TabsTrigger>
+										);
+									})}
+								</TabsList>
+								{typeOrder.filter((t) => typeToEntries.has(t)).map((typeKey) => {
+									const entries = typeToEntries.get(typeKey)!;
 									
 									return (
-									<AccordionItem key={typeKey} value={typeKey} className="border-none rounded-md overflow-hidden data-[state=open]:bg-primary data-[state=open]:text-primary-foreground transition-colors group">
-										<AccordionTrigger className="px-4 py-4 bg-card hover:no-underline data-[state=open]:bg-primary data-[state=open]:text-primary-foreground transition-colors group">
-											<div className="flex items-center justify-between w-full gap-3 pr-2">
-												<span className="text-base font-semibold">{labelFor(typeKey)}</span>
-												{isFinite(typeMinPrice) && (
-													<span className="text-xs sm:text-sm shrink-0 group-data-[state=open]:text-primary-foreground/90">
-														From £{typeMinPrice.toFixed(0)} per person
-													</span>
-												)}
-											</div>
-										</AccordionTrigger>
-										<AccordionContent className="p-2 pb-0">
-											<Accordion type="single" collapsible className="w-full space-y-1">
+										<TabsContent key={typeKey} value={typeKey} className="mt-2 ">
+											<Accordion type="single" collapsible className="w-full space-y-2">
 												{typeToEntries.get(typeKey)!.map(([categoryId, arr]) => {
 													const meta = categoryIdToMeta.get(categoryId);
 													const displayName = meta?.name?.trim();
@@ -485,13 +501,35 @@ export function EventDetailContent({ event, tickets, categories, sportPath }: Ev
 															key={categoryId}
 															data-event-id={String(event.id ?? event.event_id ?? "")}
 															data-category-id={categoryId}
-															className="overflow-hidden border-none transition-all hover:shadow-md p-0 rounded-sm"
+															className={`border-none transition-all relative p-0 ${categoryIdToFull.get(categoryId)?.highlight_type === "xs2event_choice" ? 'mt-4' : ''}`}
 														>
-															<AccordionItem value={categoryId} className="border-0">
+															{(() => {
+																				const full = categoryIdToFull.get(categoryId) ?? {};
+																				const highlightType = full.highlight_type ?? null;
+																				const isApexChoice = highlightType === "xs2event_choice";
+																				return isApexChoice ? (
+																					<>
+																						<Badge 
+																							variant="secondary" 
+																							className="absolute font-semibold -top-2.5 left-2 !py-0 bg-secondary text-secondary-foreground rounded flex items-center gap-1.5 px-2 text-[10px] z-10"
+																						>
+																							<span className="inline">Apex choice</span>
+																						</Badge>
+																						<Badge 
+																							variant="secondary" 
+																							className="absolute skew-x-34 z-0 -top-2.5 left-3.5 font-semibold bg-secondary-500 text-secondary-500 rounded flex items-center gap-1.5 px-2 !py-0 text-[10px]"
+																						>
+																							<span className="inline">Apex choice</span>
+																						</Badge>
+																					</>
+																				) : null;
+																			})()}
+															<AccordionItem value={categoryId} className="border-0 bg-card z-1 py-1 rounded-sm">
 																<AccordionTrigger className="px-3 sm:px-4 py-2 hover:no-underline data-[state=open]:border-b data-[state=open]:border-border">
 																	<div className="flex items-center justify-between w-full gap-2 pr-2">
-																		<div className="flex items-center gap-2 flex-wrap">
-																			<h3 className="font-semibold text-xs sm:text-sm text-foreground">{displayName}</h3>
+																		<div className="flex items-center gap-2 flex-wrap relative">
+																			<h3 className="font-semibold text-sm sm:text-sm text-foreground">{displayName}</h3>
+																			
 																		</div>
 																		<div className="shrink-0 text-xs sm:text-xs font-medium text-foreground">From £{isFinite(fromPrice) ? fromPrice.toFixed(0) : "-"}</div>
 																	</div>
@@ -512,6 +550,8 @@ export function EventDetailContent({ event, tickets, categories, sportPath }: Ev
 																return meta?.descriptionEN ?? "";
 															})();
 															const opts = full.options ?? {};
+															const ticketDeliveryDays = full.ticket_delivery_days ?? null;
+															const partySizeTogether = full.party_size_together ?? null;
 															const badges: Array<{ key: string; label: string; icon: any } | null> = [
 																opts.videowall ? { key: "videowall", label: "Video wall", icon: Tv } : null,
 																opts.covered_seat ? { key: "covered_seat", label: "Covered seat", icon: Umbrella } : null,
@@ -522,6 +562,10 @@ export function EventDetailContent({ event, tickets, categories, sportPath }: Ev
 																typeof opts.open_hours_before_match === "number" ? { key: "before", label: `${opts.open_hours_before_match}h before`, icon: Clock } : null,
 																typeof opts.open_hours_after_match === "number" ? { key: "after", label: `${opts.open_hours_after_match}h after`, icon: Clock } : null,
 															].filter(Boolean) as Array<{ key: string; label: string; icon: any }>;
+															const infoBadges = [
+																ticketDeliveryDays !== null && typeof ticketDeliveryDays === "number" ? { key: "delivery", label: `${ticketDeliveryDays} day${ticketDeliveryDays !== 1 ? 's' : ''} delivery`, icon: Clock } : null,
+																partySizeTogether !== null && typeof partySizeTogether === "number" ? { key: "party_size", label: `Guaranteed ${partySizeTogether} seats together`, icon: Armchair } : null,
+															].filter(Boolean) as Array<{ key: string; label: string; icon: any }>;
 
 															return (
 																<div className="space-y-2">
@@ -531,9 +575,9 @@ export function EventDetailContent({ event, tickets, categories, sportPath }: Ev
 																			dangerouslySetInnerHTML={{ __html: String(descHtml) }}
 																		/>
 																	)}
-																	{(badges.filter(Boolean).length > 0 || timedBadges.length > 0) && (
+																	{(badges.filter(Boolean).length > 0 || timedBadges.length > 0 || infoBadges.length > 0) && (
 																		<div className="flex flex-wrap gap-1.5">
-																			{[...badges.filter(Boolean) as any[], ...timedBadges].map((b: any) => (
+																			{[...badges.filter(Boolean) as any[], ...timedBadges, ...infoBadges].map((b: any) => (
 																				<span key={b.key} className="inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-[10px] font-medium bg-muted/40 border-border text-foreground">
 																					<b.icon className="w-3 h-3" />
 																					{b.label}
@@ -544,7 +588,7 @@ export function EventDetailContent({ event, tickets, categories, sportPath }: Ev
 															</div>
 														);
 														})()}
-														<div className="space-y-2"><h4 className="text-xs mt-4 font-semibold text-foreground">Ticket Options</h4></div>
+														<div className="space-y-2"><h4 className="text-xs mt-4 font-bold text-foreground">Ticket Options</h4></div>
 																		{arr.map((g: any) => (
 																			<TicketGroupRow
 																				key={`${g.event_id}-${g.category_id}-${g.sub_category}`}
@@ -565,12 +609,12 @@ export function EventDetailContent({ event, tickets, categories, sportPath }: Ev
 													</Card>
 												);
 											})}
-										</Accordion>
-									</AccordionContent>
-								</AccordionItem>
-							);
-							})}
-						</Accordion>
+											</Accordion>
+										</TabsContent>
+									);
+								})}
+							</Tabs>
+						</div>
 					);
 					})()}
 						
@@ -592,7 +636,7 @@ export function EventDetailContent({ event, tickets, categories, sportPath }: Ev
 					{/* Right Column: Venue Map */}
 					{venueId && (
 						<div className="lg:col-span-3">
-							<div className="sticky top-6">
+							<div className="sticky top-26">
 								<h3 className="text-lg font-semibold mb-3 text-foreground">Venue Map</h3>
 								<VenueMap 
 									venueId={String(venueId)} 

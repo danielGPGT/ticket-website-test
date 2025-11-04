@@ -476,3 +476,12 @@ body {
 .accordion-trigger[data-state="open"] .accordion-chevron {
   transform: rotate(180deg);
 }
+
+/* Hide scrollbar utility */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}

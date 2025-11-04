@@ -524,8 +524,8 @@ export function EventDetailContent({ event, tickets, categories, sportPath }: Ev
 																					</>
 																				) : null;
 																			})()}
-															<AccordionItem value={categoryId} className="bg-card z-1 py-1 rounded-sm border">
-																<AccordionTrigger className="px-3 sm:px-4 py-2 hover:no-underline data-[state=open]:border-b data-[state=open]:border-border group">
+															<AccordionItem value={categoryId} className="bg-card z-1 py-1 rounded-sm border border-border group hover:border-primary transition-colors">
+																<AccordionTrigger className="px-3 sm:px-4 py-2 hover:no-underline data-[state=open]:border-b data-[state=open]:border-border cursor-pointer">
 																	<div className="flex items-center justify-between w-full gap-2">
 																		<div className="flex items-center gap-2 flex-wrap relative">
 																			<h3 className="font-semibold text-sm sm:text-sm text-foreground">{displayName}</h3>
@@ -653,7 +653,7 @@ export function EventDetailContent({ event, tickets, categories, sportPath }: Ev
 					{/* Right Column: Venue Map */}
 					{venueId && (
 						<div className="lg:col-span-3">
-							<div className="sticky top-26">
+							<div className="sticky top-30">
 								<h3 className="text-lg font-semibold mb-3 text-foreground">Venue Map</h3>
 								<VenueMap 
 									venueId={String(venueId)} 

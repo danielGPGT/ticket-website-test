@@ -468,8 +468,23 @@ export function EventDetailContent({ event, tickets, categories, sportPath }: Ev
 									
 									return (
 										<TabsContent key={typeKey} value={typeKey} className="mt-2 ">
-											<Accordion type="single" collapsible className="w-full space-y-2">
-												{typeToEntries.get(typeKey)!.map(([categoryId, arr]) => {
+											{(() => {
+												// Find first category ID to open by default
+												// Prioritize "Apex choice" categories, otherwise use first
+												let defaultCategoryId: string | undefined;
+												for (const [categoryId] of entries) {
+													const full = categoryIdToFull.get(categoryId) ?? {};
+													if (full.highlight_type === "xs2event_choice") {
+														defaultCategoryId = categoryId;
+														break;
+													}
+													if (!defaultCategoryId) {
+														defaultCategoryId = categoryId;
+													}
+												}
+												return (
+													<Accordion type="single" collapsible defaultValue={defaultCategoryId} className="w-full space-y-2">
+														{entries.map(([categoryId, arr]) => {
 													const meta = categoryIdToMeta.get(categoryId);
 													let displayName = meta?.name?.trim();
 													if (!displayName) return null;
@@ -612,7 +627,9 @@ export function EventDetailContent({ event, tickets, categories, sportPath }: Ev
 													</Card>
 												);
 											})}
-											</Accordion>
+													</Accordion>
+												);
+											})()}
 										</TabsContent>
 									);
 								})}

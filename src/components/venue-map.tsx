@@ -906,9 +906,9 @@ export function VenueMap({ venueId, eventId, categories, tickets = [], className
 
   return (
     <>
-      <Card className={className}> 
+      <Card className={className} className="py-0"> 
         <CardContent className="p-0">
-          <div className="overflow-auto max-h-[520px]">
+          <div className="overflow-auto max-h-[600px]">
             {error ? (
               <div className="p-6 text-sm text-muted-foreground">{error}</div>
             ) : svgMarkup ? (

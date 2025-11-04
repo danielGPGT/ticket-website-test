@@ -10,7 +10,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useCartStore } from "@/store/cart-store";
-import { Package, ShoppingCart, Check, ChevronDown, Ticket } from "lucide-react";
+import { ShoppingCart, Check, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type Props = {
@@ -40,6 +40,7 @@ export function TicketGroupRow({
   const [added, setAdded] = useState(false);
   const addItem = useCartStore((s) => s.addItem);
   const isOutOfStock = stock <= 0;
+  const isLowStock = stock > 0 && stock <= 5;
 
   const maxQty = Math.min(10, Math.max(1, stock));
   const qtyOptions = Array.from({ length: maxQty }, (_, i) => i + 1);
@@ -63,29 +64,50 @@ export function TicketGroupRow({
   return (
     <div
       className={cn(
-        "rounded-md border border-border bg-card transition-all hover:shadow-sm",
-        isOutOfStock && "opacity-50"
+        "group relative rounded-lg border transition-all duration-200",
+        "bg-card/50 hover:bg-card hover:border-primary/30 hover:shadow-sm",
+        isOutOfStock && "opacity-60 cursor-not-allowed"
       )}
     >
-      <div className="px-2 py-1">
-        <div className="flex flex-row sm:flex-row sm:items-center sm:justify-between gap-2">
+      <div className="px-2.5 sm:px-3 py-2 sm:py-2.5">
+        <div className="flex items-center justify-between gap-2 sm:gap-3">
           {/* Left: Ticket Info */}
-          <div className="flex-1 min-w-0">
-            <div className="space-y-1">
-              <span className="text-xs font-bold text-foreground">
-                {ticketType}
-              </span>{" "}
-              <div className="text-left">
-                <div className="font-semibold text-sm text-secondary">
+          <div className="flex-1 min-w-0 flex items-center gap-2 sm:gap-3">
+            <div className="flex flex-col gap-0.5 min-w-0 flex-1">
+              <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+                <span className="text-[11px] sm:text-xs font-semibold text-foreground truncate">
+                  {ticketType}
+                </span>
+                {isLowStock && !isOutOfStock && (
+                  <Badge 
+                    variant="outline" 
+                    className="h-3.5 sm:h-4 px-1 sm:px-1.5 text-[9px] sm:text-[10px] font-medium border-warning/40 text-warning shrink-0"
+                  >
+                    {stock} left
+                  </Badge>
+                )}
+                {isOutOfStock && (
+                  <Badge 
+                    variant="outline" 
+                    className="h-3.5 sm:h-4 px-1 sm:px-1.5 text-[9px] sm:text-[10px] font-medium border-destructive/40 text-destructive shrink-0"
+                  >
+                    Sold out
+                  </Badge>
+                )}
+              </div>
+              <div className="flex items-baseline gap-0.5 sm:gap-1">
+                <span className="text-sm sm:text-base font-bold text-foreground">
                   £{minPrice.toFixed(0)}
-                </div>
+                </span>
+                <span className="text-[9px] sm:text-[10px] text-muted-foreground font-medium inline">
+                  per ticket
+                </span>
               </div>
             </div>
-
           </div>
 
-
-          <div className="flex items-center gap-2 sm:w-auto">
+          {/* Right: Quantity & Add to Cart */}
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
             <Select
               value={String(qty)}
               onValueChange={(value) =>
@@ -93,12 +115,15 @@ export function TicketGroupRow({
               }
               disabled={isOutOfStock}
             >
-              <SelectTrigger className={cn(
-                "h-9 sm:h-8 w-14 sm:w-14 text-xs px-1.5 sm:px-2 font-medium border-none transition-all flex-shrink-0",
-                "hover:border-primary/50 focus:border-primary",
-                "bg-background hover:bg-accent/50",
-                isOutOfStock && "opacity-50 cursor-not-allowed"
-              )} aria-label="Select quantity">
+              <SelectTrigger 
+                className={cn(
+                  "h-8 sm:h-9 w-14 sm:w-16 text-[11px] sm:text-xs font-semibold border-2 transition-all",
+                  "hover:border-primary/60 focus:border-primary focus:ring-2 focus:ring-primary/20",
+                  "bg-background hover:bg-accent/50",
+                  isOutOfStock && "opacity-50 cursor-not-allowed border-muted"
+                )} 
+                aria-label="Select quantity"
+              >
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -106,7 +131,7 @@ export function TicketGroupRow({
                   <SelectItem
                     key={num}
                     value={String(num)}
-                    className="text-xs font-medium"
+                    className="text-xs font-medium focus:bg-accent"
                   >
                     {num}
                   </SelectItem>
@@ -119,8 +144,9 @@ export function TicketGroupRow({
               onClick={addToCart}
               disabled={isOutOfStock || qty < 1}
               className={cn(
-                "h-9 sm:h-8 px-3 sm:px-4 text-xs font-semibold gap-1 transition-all duration-200 flex-1 sm:flex-initial",
-                "shadow-sm hover:shadow-md active:scale-95",
+                "h-8 sm:h-9 px-2.5 sm:px-4 text-[11px] sm:text-xs font-semibold gap-1 sm:gap-1.5 transition-all duration-200",
+                "shadow-sm hover:shadow-md active:scale-[0.98]",
+                "flex-1 sm:flex-initial sm:min-w-[100px]",
                 added
                   ? "bg-success text-success-foreground hover:bg-success/90"
                   : "bg-primary text-primary-foreground hover:bg-primary/90"
@@ -137,20 +163,20 @@ export function TicketGroupRow({
             >
               {added ? (
                 <>
-                  <Check className="w-3.5 h-3.5" />
+                  <Check className="w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0" />
                   <span className="hidden sm:inline">Added!</span>
-                  <span className="sm:hidden">Added</span>
+                  <span className="sm:hidden">Done</span>
                 </>
               ) : (
                 <>
-                  <ShoppingCart className="w-3.5 h-3.5" />
+                  <ShoppingCart className="w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0" />
                   <span className="hidden sm:inline">Add to Cart</span>
                   <span className="sm:hidden">Add</span>
                 </>
               )}
             </Button>
           </div>
-		  </div>
+        </div>
       </div>
     </div>
   );

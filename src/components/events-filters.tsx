@@ -28,6 +28,7 @@ type EventsFiltersProps = {
 	initialFilters?: Partial<FilterState>;
 	events?: any[]; // Current events for dynamic counts
 	isMobile?: boolean; // If true, remove border and shadow for mobile drawer
+	hiddenFilters?: string[]; // Array of filter IDs to hide (e.g., ["sport"])
 };
 
 // Re-export FilterState type for backward compatibility
@@ -55,7 +56,7 @@ function formatSportType(sportType: string): string {
 	return sportType.replace(/_/g, " ").replace(/\b\w/g, (char) => char.toUpperCase());
 }
 
-export function EventsFilters({ onFilterChange, initialFilters = {}, events = [], isMobile = false }: EventsFiltersProps) {
+export function EventsFilters({ onFilterChange, initialFilters = {}, events = [], isMobile = false, hiddenFilters = [] }: EventsFiltersProps) {
 	// Expandable sections state - expand key sections by default
 	const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
 		popularEvents: false,
@@ -580,34 +581,36 @@ export function EventsFilters({ onFilterChange, initialFilters = {}, events = []
 					</FilterSection>
 
 					{/* Sport */}
-					<FilterSection
-						id="sport"
-						icon={Activity}
-						title="Sport"
-						isExpanded={expandedSections.sport}
-					>
-						{loading.sports ? (
-							<div className="text-sm text-muted-foreground py-2">Loading...</div>
-						) : sports.length === 0 ? (
-							<div className="text-sm text-muted-foreground py-2">No sports found</div>
-						) : (
-							sports.map((s) => (
-								<label
-									key={s.value}
-									className="flex items-center gap-2 cursor-pointer hover:bg-accent/50 rounded px-2 py-1.5 -mx-2"
-								>
-									<Checkbox
-										checked={filters.sportType.includes(s.value)}
-										onCheckedChange={() => toggleFilterArray("sportType", s.value)}
-									/>
-									<span className="text-sm flex-1">{s.label}</span>
-									{s.count !== undefined && (
-										<span className="text-xs text-muted-foreground">({s.count})</span>
-									)}
-								</label>
-							))
-						)}
-					</FilterSection>
+					{!hiddenFilters.includes("sport") && (
+						<FilterSection
+							id="sport"
+							icon={Activity}
+							title="Sport"
+							isExpanded={expandedSections.sport}
+						>
+							{loading.sports ? (
+								<div className="text-sm text-muted-foreground py-2">Loading...</div>
+							) : sports.length === 0 ? (
+								<div className="text-sm text-muted-foreground py-2">No sports found</div>
+							) : (
+								sports.map((s) => (
+									<label
+										key={s.value}
+										className="flex items-center gap-2 cursor-pointer hover:bg-accent/50 rounded px-2 py-1.5 -mx-2"
+									>
+										<Checkbox
+											checked={filters.sportType.includes(s.value)}
+											onCheckedChange={() => toggleFilterArray("sportType", s.value)}
+										/>
+										<span className="text-sm flex-1">{s.label}</span>
+										{s.count !== undefined && (
+											<span className="text-xs text-muted-foreground">({s.count})</span>
+										)}
+									</label>
+								))
+							)}
+						</FilterSection>
+					)}
 
 					{/* Country */}
 					<FilterSection

@@ -440,6 +440,10 @@ body {
   color: var(--destructive-100) !important;
 }
 
+.container {
+  @apply max-w-7xl mx-auto;
+}
+
 [data-sonner-toast][data-type="warning"] {
   background-color: var(--warning-subtle) !important;
   border: 1px solid var(--warning-border) !important;

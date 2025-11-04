@@ -13,10 +13,20 @@ import { useFilters } from "@/hooks/use-filters";
 import { useEventsAPI } from "@/hooks/use-events-api";
 import { useDebounce } from "@/hooks/use-debounce";
 import { normalizeToIso3 } from "@/lib/country-flags";
+import { usePathname } from "next/navigation";
+import { getSportPath } from "@/lib/sport-routes";
 
-export function EventsExplorerEnhanced() {
+type EventsExplorerEnhancedProps = {
+	hiddenFilters?: string[];
+};
+
+export function EventsExplorerEnhanced({ hiddenFilters = [] }: EventsExplorerEnhancedProps) {
+	const pathname = usePathname();
 	const { filters, teamId, showAllEvents, updateFilters, clearFilters, activeFilterCount } = useFilters();
 	const { fetchEvents, loading: apiLoading, error } = useEventsAPI();
+	
+	// Detect sport path from pathname
+	const sportPath = getSportPath(filters.sportType[0] || null) || (pathname.startsWith("/formula-1") ? "/formula-1" : pathname.startsWith("/football") ? "/football" : pathname.startsWith("/motogp") ? "/motogp" : pathname.startsWith("/tennis") ? "/tennis" : null);
 	
 	const [allEvents, setAllEvents] = useState<any[]>([]);
 	const [loading, setLoading] = useState(true);
@@ -196,12 +206,13 @@ export function EventsExplorerEnhanced() {
 					<EventsFilters 
 						onFilterChange={handleFilterChange} 
 						initialFilters={filters} 
-						events={allEvents} 
+						events={allEvents}
+						hiddenFilters={hiddenFilters}
 					/>
 				</aside>
 
 				{/* Events Grid */}
-				<main className="flex-1 min-w-0 overflow-x-hidden">
+				<main className="flex-1 min-w-0">
 					{loading && allEvents.length === 0 ? (
 						<EventsListSkeleton count={6} />
 					) : error ? (
@@ -272,6 +283,7 @@ export function EventsExplorerEnhanced() {
 									events={displayedEvents}
 									loading={loading && displayedEvents.length === 0}
 									filters={filters}
+									sportPath={sportPath}
 								/>
 							)}
 							
@@ -383,8 +395,9 @@ export function EventsExplorerEnhanced() {
 						<EventsFilters 
 							onFilterChange={handleFilterChange} 
 							initialFilters={filters} 
-							events={allEvents} 
-							isMobile={true} 
+							events={allEvents}
+							isMobile={true}
+							hiddenFilters={hiddenFilters}
 						/>
 					</div>
 				</DrawerContent>

@@ -18,10 +18,10 @@ import { useCartStore } from "@/store/cart-store";
 import { Badge } from "@/components/ui/badge";
 
 const staticSports = [
-	{ href: "/events?sport_type=formula1", label: "Formula 1", id: "formula1" },
-	{ href: "/events?sport_type=football", label: "Football", id: "football" },
-	{ href: "/events?sport_type=motogp", label: "MotoGP", id: "motogp" },
-	{ href: "/events?sport_type=tennis", label: "Tennis", id: "tennis" },
+	{ href: "/formula-1", label: "Formula 1", id: "formula1" },
+	{ href: "/football", label: "Football", id: "football" },
+	{ href: "/motogp", label: "MotoGP", id: "motogp" },
+	{ href: "/tennis", label: "Tennis", id: "tennis" },
 ];
 
 const countryNameMap: Record<string, string> = {
@@ -151,10 +151,10 @@ export function SiteHeader() {
 	const mainIds = new Set(["football", "formula1", "motogp", "tennis"]);
 	const mainSports = useMemo(() => {
 		const byId: Record<string, { href: string; label: string }> = {
-			football: { href: "/events?sport_type=football", label: "Football" },
-			formula1: { href: "/events?sport_type=formula1", label: "Formula 1" },
-			motogp: { href: "/events?sport_type=motogp", label: "MotoGP" },
-			tennis: { href: "/events?sport_type=tennis", label: "Tennis" },
+			football: { href: "/football", label: "Football" },
+			formula1: { href: "/formula-1", label: "Formula 1" },
+			motogp: { href: "/motogp", label: "MotoGP" },
+			tennis: { href: "/tennis", label: "Tennis" },
 		};
 		return ["football", "formula1", "motogp", "tennis"].filter((id) => fetchedSports.includes(id) || id).map((id) => byId[id]);
 	}, [fetchedSports]);
@@ -598,7 +598,7 @@ export function SiteHeader() {
 														</Link>
 													))}
 													<Link
-														href="/events?sport_type=football"
+														href="/football"
 														className="block px-3 py-2.5 rounded-lg hover:bg-accent active:bg-muted font-medium text-sm border-t border-border/50 mt-2 pt-2"
 														onClick={() => {
 															setMobileExpanded((p) => ({ ...p, football: false }));
@@ -670,7 +670,7 @@ export function SiteHeader() {
 												<div className="px-3 py-2 text-sm text-muted-foreground">No upcoming events</div>
 											)}
 											<Link
-												href="/events?sport_type=formula1"
+												href="/formula-1"
 												className="block px-3 py-2.5 rounded-lg hover:bg-accent active:bg-muted font-medium text-sm border-t border-border/50 mt-2 pt-2"
 												onClick={() => {
 													setMobileExpanded((p) => ({ ...p, formula1: false }));
@@ -728,7 +728,7 @@ export function SiteHeader() {
 															</Link>
 														))}
 													<Link
-														href="/events?sport_type=motogp"
+														href="/motogp"
 														className="block px-3 py-2.5 rounded-lg hover:bg-accent active:bg-muted font-medium text-sm border-t border-border/50 mt-2 pt-2"
 														onClick={() => {
 															setMobileExpanded((p) => ({ ...p, motogp: false }));
@@ -784,7 +784,7 @@ export function SiteHeader() {
 														</Link>
 													))}
 													<Link
-														href="/events?sport_type=tennis"
+														href="/tennis"
 														className="block px-3 py-2.5 rounded-lg hover:bg-accent active:bg-muted font-medium text-sm border-t border-border/50 mt-2 pt-2"
 														onClick={() => {
 															setMobileExpanded((p) => ({ ...p, tennis: false }));

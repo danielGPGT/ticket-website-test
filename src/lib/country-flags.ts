@@ -106,3 +106,136 @@ export function getFlagFromIso3(iso3?: string | null): string {
 	return flagEmoji(iso2);
 }
 
+/**
+ * Country names mapping (ISO 3166-1 alpha-3 to readable name)
+ */
+const COUNTRY_NAMES: Record<string, string> = {
+	GBR: "United Kingdom",
+	ESP: "Spain",
+	ITA: "Italy",
+	DEU: "Germany",
+	FRA: "France",
+	NLD: "Netherlands",
+	PRT: "Portugal",
+	AUT: "Austria",
+	BEL: "Belgium",
+	DNK: "Denmark",
+	SWE: "Sweden",
+	NOR: "Norway",
+	IRL: "Ireland",
+	POL: "Poland",
+	TUR: "Turkey",
+	CHE: "Switzerland",
+	GRC: "Greece",
+	CZE: "Czech Republic",
+	HUN: "Hungary",
+	ROU: "Romania",
+	FIN: "Finland",
+	RUS: "Russia",
+	UKR: "Ukraine",
+	HRV: "Croatia",
+	SRB: "Serbia",
+	BGR: "Bulgaria",
+	SVK: "Slovakia",
+	SVN: "Slovenia",
+	LVA: "Latvia",
+	LTU: "Lithuania",
+	EST: "Estonia",
+	ISL: "Iceland",
+	LUX: "Luxembourg",
+	MNE: "Montenegro",
+	MKD: "North Macedonia",
+	ALB: "Albania",
+	BIH: "Bosnia and Herzegovina",
+	MLT: "Malta",
+	CYP: "Cyprus",
+	MCO: "Monaco",
+	AND: "Andorra",
+	USA: "United States",
+	CAN: "Canada",
+	MEX: "Mexico",
+	BRA: "Brazil",
+	ARG: "Argentina",
+	CHL: "Chile",
+	COL: "Colombia",
+	PER: "Peru",
+	VEN: "Venezuela",
+	ECU: "Ecuador",
+	URY: "Uruguay",
+	PRY: "Paraguay",
+	BOL: "Bolivia",
+	PAN: "Panama",
+	CRI: "Costa Rica",
+	DOM: "Dominican Republic",
+	HND: "Honduras",
+	GTM: "Guatemala",
+	NIC: "Nicaragua",
+	SLV: "El Salvador",
+	CUB: "Cuba",
+	JAM: "Jamaica",
+	HTI: "Haiti",
+	TTO: "Trinidad and Tobago",
+	AUS: "Australia",
+	NZL: "New Zealand",
+	JPN: "Japan",
+	CHN: "China",
+	IND: "India",
+	KOR: "South Korea",
+	SGP: "Singapore",
+	MYS: "Malaysia",
+	THA: "Thailand",
+	IDN: "Indonesia",
+	VNM: "Vietnam",
+	PHL: "Philippines",
+	HKG: "Hong Kong",
+	TWN: "Taiwan",
+	ARE: "United Arab Emirates",
+	SAU: "Saudi Arabia",
+	QAT: "Qatar",
+	BHR: "Bahrain",
+	KWT: "Kuwait",
+	OMN: "Oman",
+	ISR: "Israel",
+	PAK: "Pakistan",
+	BGD: "Bangladesh",
+	LKA: "Sri Lanka",
+	AZE: "Azerbaijan",
+	ZAF: "South Africa",
+	EGY: "Egypt",
+	MAR: "Morocco",
+	NGA: "Nigeria",
+	KEN: "Kenya",
+	TUN: "Tunisia",
+	ALG: "Algeria",
+	GHA: "Ghana",
+	UGA: "Uganda",
+	TZA: "Tanzania",
+	ETH: "Ethiopia",
+	SDN: "Sudan",
+};
+
+/**
+ * Gets a readable country name from a country code (ISO 2 or ISO 3)
+ */
+export function getCountryName(code?: string | null): string {
+	if (!code) return "";
+	
+	const upper = code.toUpperCase();
+	
+	// If it's already a country name (3+ chars), return as-is if found
+	if (upper.length >= 3 && COUNTRY_NAMES[upper]) {
+		return COUNTRY_NAMES[upper];
+	}
+	
+	// If it's ISO 2, convert to ISO 3 first
+	if (upper.length === 2) {
+		const iso3 = iso2ToIso3(upper);
+		if (iso3 && COUNTRY_NAMES[iso3]) {
+			return COUNTRY_NAMES[iso3];
+		}
+	}
+	
+	// Fallback: return the code as-is
+	return code;
+}
+

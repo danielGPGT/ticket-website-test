@@ -11,9 +11,10 @@ type VirtualEventsListProps = {
 	loading?: boolean;
 	filters: FilterState;
 	height?: number;
+	sportPath?: string | null; // Sport-specific path for slug-based URLs
 };
 
-export function VirtualEventsList({ events, loading, filters, height = 800 }: VirtualEventsListProps) {
+export function VirtualEventsList({ events, loading, filters, height = 800, sportPath }: VirtualEventsListProps) {
 	const parentRef = useRef<HTMLDivElement>(null);
 
 	const virtualizer = useVirtualizer({
@@ -94,6 +95,8 @@ export function VirtualEventsList({ events, loading, filters, height = 800 }: Vi
 									numberOfTickets={e.number_of_tickets}
 									currency="£"
 									isPopular={e.is_popular === true || e.popular === true}
+									sportPath={sportPath}
+									event={e}
 								/>
 							</div>
 						);
@@ -105,7 +108,7 @@ export function VirtualEventsList({ events, loading, filters, height = 800 }: Vi
 
 	// Regular rendering for smaller/medium lists (better UX, simpler)
 	return (
-		<div className="space-y-5">
+		<div className="space-y-4">
 			{events.map((e) => {
 				const countryCode = e.iso_country ?? e.country ?? e.venue_country ?? e.location?.country ?? e.location?.iso_country ?? null;
 				const timeStart = e.date_start_main_event ?? e.date_start;
@@ -131,6 +134,8 @@ export function VirtualEventsList({ events, loading, filters, height = 800 }: Vi
 						numberOfTickets={e.number_of_tickets}
 						currency="£"
 						isPopular={filters.popularEvents || e.is_popular === true || e.popular === true}
+						sportPath={sportPath}
+						event={e}
 					/>
 				);
 			})}

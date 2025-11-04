@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { CountryFlag } from "@/components/country-flag";
 import { Clock, Bell, ArrowRight, Flame, Calendar } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { createEventSlug } from "@/lib/slug";
 
 type Props = {
 	id: string;
@@ -27,6 +28,8 @@ type Props = {
 	numberOfTickets?: number;
 	currency?: string;
 	isPopular?: boolean;
+	sportPath?: string | null; // Sport-specific path for slug-based URLs (e.g., "/formula-1")
+	event?: any; // Full event object for slug generation
 };
 
 function formatDate(dateStr?: string): string {
@@ -108,7 +111,9 @@ export function EventCardHorizontal({
 	stockStatus,
 	numberOfTickets,
 	currency = "£",
-	isPopular = false
+	isPopular = false,
+	sportPath,
+	event
 }: Props) {
 	// Determine stock status from event status and ticket availability
 	// XS2 API event_status enum: cancelled, closed, notstarted, nosale, postponed, soldout
@@ -175,22 +180,37 @@ export function EventCardHorizontal({
 	const isOutOfStock = actualStockStatus === "out_of_stock";
 	const isNotConfirmed = actualStockStatus === "not_confirmed";
 
+	// Generate URL - use slug-based URL if on sport page, otherwise use ID-based
+	const eventUrl = sportPath && event 
+		? `${sportPath}/${createEventSlug(event)}`
+		: `/events/${id}`;
+
 	return (
-		<Link href={`/events/${id}`} className="block">
-			<Card className="group border py-0 border-border/50 shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer bg-card hover:border-primary/30">
+		<Link href={eventUrl} className="block">
+			<Card className={`group border py-0 border-border/50 shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer bg-card hover:border-primary/30 ${isPopular ? 'mt-6' : ''}`}>
 				<CardContent className="p-0">
 					<div className="flex flex-col sm:flex-row">
 						{/* Left Section - Event Info */}
 						<div className="flex-1 p-4 sm:p-5 lg:p-6 relative">
 							{/* Popular Badge - better mobile positioning */}
 							{isPopular && (
-								<Badge 
+									<><Badge 
+										variant="secondary" 
+										className="absolute -top-4 left-4 sm:-top-3 sm:left-6 font-semibold bg-secondary text-secondary-foreground rounded flex items-center gap-1.5 px-2 py-0.5 text-xs"
+									>
+										<Flame className="w-3 h-3" />
+										<span className="inline">Popular</span>
+									</Badge>
+									<Badge 
 									variant="secondary" 
-									className="absolute -top-3 left-4 sm:left-6 font-semibold bg-secondary text-secondary-foreground rounded flex items-center gap-1.5 px-2 py-0.5 text-xs"
+									className="absolute skew-x-34 -z-1 -top-4 left-6 sm:-top-3 sm:left-8 font-semibold bg-secondary-500  text-secondary-500 rounded flex items-center gap-1.5 px-2 py-0.5 text-xs"
 								>
 									<Flame className="w-3 h-3" />
 									<span className="inline">Popular</span>
 								</Badge>
+									</>
+									
+								
 							)}
 							
 							{/* Country Flag - Top Right on All Screen Sizes */}
@@ -205,7 +225,7 @@ export function EventCardHorizontal({
 							
 							<div className="space-y-2.5 sm:space-y-3">
 								{/* Event Title - Top Left, Consistent Across All Screen Sizes */}
-								<h3 className="font-bold leading-tight text-foreground group-hover:text-primary transition-colors text-sm sm:text-base pr-12 sm:pr-8">
+								<h3 className="font-bold leading-tight text-foreground group-hover:text-primary transition-colors text-md sm:text-base pr-12 sm:pr-8">
 									{name}
 								</h3>
 
@@ -272,7 +292,7 @@ export function EventCardHorizontal({
 						</div>
 
 						{/* Right Section - Price & Action */}
-						<div className="relative sm:w-56 lg:w-60 px-4 sm:px-5 lg:px-6 py-4 sm:py-5 border-t sm:border-t-0 sm:border-l border-border/30 flex flex-row sm:flex-col justify-between sm:justify-center items-center sm:items-center gap-3 sm:gap-3 bg-muted/30 sm:bg-transparent">
+						<div className="relative sm:w-56 lg:w-60 px-4 sm:px-5 lg:px-6 py-4 sm:py-5 border-t sm:border-t-0 sm:border-l border-border/30 flex flex-row sm:flex-col justify-between sm:justify-center items-center sm:items-center gap-3 sm:gap-3 bg-transparent sm:bg-transparent">
 							{/* Dashed separator - hidden on mobile, shown on desktop */}
 							<div className="hidden sm:block absolute left-0 top-0 bottom-0 w-px border-l-2 my-4 border-dashed border-border/50" />
 							<div className="flex flex-col items-start sm:items-center w-full space-y-2 sm:space-y-2">
@@ -304,13 +324,13 @@ export function EventCardHorizontal({
 										</div>
 										{/* Stock Status Badge - hide on mobile, show on desktop */}
 										{isAvailable && (
-											<Badge variant="secondary" className="hidden sm:inline-flex items-center gap-1 rounded-full mt-0.5 border" style={{ backgroundColor: 'var(--success-subtle)', borderColor: 'var(--success-border)' }}>
+											<Badge variant="secondary" className="sm:inline-flex items-center gap-1 rounded-full mt-0.5 border" style={{ backgroundColor: 'var(--success-subtle)', borderColor: 'var(--success-border)' }}>
 												<div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: 'var(--success)' }} />
-												<span className="font-semibold text-xs dark:text-success-100" style={{ color: 'var(--success-900)' }}>On sale</span>
+												<span className="font-semibold text-xs text-success" style={{ color: 'var(--success)' }}>On sale</span>
 											</Badge>
 										)}
 										{isNotConfirmed && (
-											<Badge variant="secondary" className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full mt-0.5 border" style={{ backgroundColor: 'var(--warning-subtle)', borderColor: 'var(--warning-border)' }}>
+											<Badge variant="secondary" className="sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full mt-0.5 border" style={{ backgroundColor: 'var(--warning-subtle)', borderColor: 'var(--warning-border)' }}>
 												<div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: 'var(--warning)' }} />
 												<span className="font-semibold text-xs dark:text-warning-100" style={{ color: 'var(--warning-900)' }}>Not confirmed</span>
 											</Badge>
@@ -319,18 +339,18 @@ export function EventCardHorizontal({
 								)}
 								{/* Status Badge - for coming soon and sales closed (no price) - hide on mobile */}
 								{isComingSoon && (
-									<div className="hidden sm:flex w-full justify-end">
-										<Badge variant="secondary" className="inline-flex items-center gap-1 rounded-full mt-0.5 border" style={{ backgroundColor: 'var(--primary-50)', borderColor: 'var(--primary-200)' }}>
-											<div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: 'var(--primary)' }} />
-											<span className="font-semibold text-xs" style={{ color: 'var(--primary-700)' }}>Coming soon</span>
+									<div className="sm:flex w-full justify-end">
+										<Badge variant="secondary" className="inline-flex items-center gap-1 rounded-full mt-0.5 border" style={{ backgroundColor: 'var(--secondary-50)', borderColor: 'var(--secondary-200)' }}>
+											<div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: 'var(--secondary)' }} />
+											<span className="font-semibold text-xs" style={{ color: 'var(--secondary)' }}>Coming soon</span>
 										</Badge>
 									</div>
 								)}
 								{isOutOfStock && (
-									<div className="hidden sm:flex w-full justify-end">
+									<div className="sm:flex w-full justify-end">
 										<Badge variant="secondary" className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full mt-0.5 border" style={{ backgroundColor: 'var(--destructive-subtle)', borderColor: 'var(--destructive-border)' }}>
 											<div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: 'var(--destructive)' }} />
-											<span className="font-semibold text-xs dark:text-destructive-100" style={{ color: 'var(--destructive-900)' }}>Sales closed</span>
+											<span className="font-semibold text-xs dark:text-destructive-100" style={{ color: 'var(--destructive-600)' }}>Sales closed</span>
 										</Badge>
 									</div>
 								)}

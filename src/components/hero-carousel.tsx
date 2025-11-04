@@ -17,6 +17,7 @@ import {
 import Autoplay from "embla-carousel-autoplay";
 import { ArrowRight } from "lucide-react";
 import { getHeroImage } from "@/lib/images";
+import { EventImageWithFallback } from "@/components/event-image-with-fallback";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 
@@ -211,17 +212,17 @@ export function HeroCarousel() {
 							<CarouselItem key={event.id} className="pl-0">
 								<div className="relative h-[350px] sm:h-[420px] md:h-[450px] lg:h-[500px]">
 									{/* Background Image */}
-									<div className="absolute inset-0">
-										<Image
-											src={getHeroImage("sports")}
-											alt={event.name}
-											fill
-											priority={index === 0}
-											className="object-cover"
-											sizes="100vw"
-										/>
-										<div className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/50 to-black/90" />
-									</div>
+                                    <div className="absolute inset-0">
+                                        <EventImageWithFallback
+                                            eventId={event.id}
+                                            sportType={event.sportType}
+                                            alt={event.name}
+                                            fill
+                                            priority={index === 0}
+                                            className="object-cover"
+                                        />
+                                        <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/50 to-black/90" />
+                                    </div>
 
 									{/* Content */}
 									<div className="relative mx-auto container px-4 h-full flex flex-col justify-end pb-16 sm:pb-20 md:pb-24">

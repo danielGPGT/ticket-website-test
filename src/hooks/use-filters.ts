@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useMemo } from "react";
-import { useSearchParams, useRouter } from "next/navigation";
+import { useSearchParams, useRouter, usePathname } from "next/navigation";
 
 export type FilterState = {
 	sportType: string[];
@@ -16,11 +16,26 @@ export type FilterState = {
 	eventStatus: string[];
 };
 
+// Map pathname to sport type
+const PATHNAME_TO_SPORT: Record<string, string> = {
+	"/formula-1": "formula1",
+	"/football": "football",
+	"/motogp": "motogp",
+	"/tennis": "tennis",
+};
+
 export function useFilters() {
 	const router = useRouter();
+	const pathname = usePathname();
 	const searchParams = useSearchParams();
 
+	// Detect sport from pathname
+	const sportFromPathname = useMemo(() => {
+		return PATHNAME_TO_SPORT[pathname] || null;
+	}, [pathname]);
+
 	// Parse filters from URL - support both single and array values
+	// If on a sport page and no sport_type in URL, infer from pathname
 	const filters: FilterState = useMemo(() => {
 		const getArrayParam = (key: string): string[] => {
 			const param = searchParams.get(key);
@@ -28,8 +43,16 @@ export function useFilters() {
 			return param.includes(",") ? param.split(",").filter(Boolean) : [param];
 		};
 
+		const urlSportType = getArrayParam("sport_type");
+		// If on sport page and no sport_type in URL, use pathname sport
+		const sportType = urlSportType.length > 0 
+			? urlSportType 
+			: sportFromPathname 
+				? [sportFromPathname] 
+				: [];
+
 		return {
-			sportType: getArrayParam("sport_type"),
+			sportType,
 			tournamentId: getArrayParam("tournament_id"),
 			countryCode: getArrayParam("country"),
 			city: getArrayParam("city"),
@@ -42,23 +65,38 @@ export function useFilters() {
 			popularEvents: searchParams.get("popular_events") === "true",
 			eventStatus: getArrayParam("event_status"),
 		};
-	}, [searchParams]);
+	}, [searchParams, sportFromPathname]);
 
 	// Get additional URL parameters
 	const teamId = searchParams.get("team") || searchParams.get("team_id") || "";
 	const origin = searchParams.get("origin") || "";
-	const showAllEvents = origin === "allevents";
+	// Show all events if origin=allevents OR if on a sport page (sport pages show all events for that sport)
+	const showAllEvents = origin === "allevents" || sportFromPathname !== null;
 
 	const updateFilters = useCallback((newFilters: Partial<FilterState>) => {
 		const params = new URLSearchParams();
-		params.set("origin", "allevents");
+		
+		// Determine if we're on a sport page
+		const isSportPage = sportFromPathname !== null;
+		
+		// Only add origin=allevents if NOT on a sport page (sport pages don't need it)
+		if (!isSportPage) {
+			params.set("origin", "allevents");
+		}
 
 		// Merge with existing filters
 		const mergedFilters = { ...filters, ...newFilters };
 
-		// Add filters to URL
+		// Get base path (sport page path or /events)
+		const getBasePath = isSportPage ? pathname : "/events";
+
+		// Add sport filter only if it's different from the page's default sport
+		// On sport pages, don't add sport_type to URL if it matches the page
 		if (mergedFilters.sportType.length > 0) {
-			params.set("sport_type", mergedFilters.sportType.join(","));
+			const sportMatchesPage = isSportPage && mergedFilters.sportType.length === 1 && mergedFilters.sportType[0] === sportFromPathname;
+			if (!sportMatchesPage) {
+				params.set("sport_type", mergedFilters.sportType.join(","));
+			}
 		}
 		if (mergedFilters.tournamentId.length > 0) {
 			params.set("tournament_id", mergedFilters.tournamentId.join(","));
@@ -94,12 +132,17 @@ export function useFilters() {
 			params.set("event_status", mergedFilters.eventStatus.join(","));
 		}
 
-		router.push(`/events?${params.toString()}`);
-	}, [filters, router]);
+		// Only add query params if there are any, otherwise just use the base path
+		const hasParams = params.toString().length > 0;
+		const newUrl = hasParams ? `${getBasePath}?${params.toString()}` : getBasePath;
+		router.push(newUrl);
+	}, [filters, router, pathname, sportFromPathname]);
 
 	const clearFilters = useCallback(() => {
-		router.push("/events");
-	}, [router]);
+		// If on a sport page, clear to the sport page, otherwise to /events
+		const targetPath = sportFromPathname ? pathname : "/events";
+		router.push(targetPath);
+	}, [router, pathname, sportFromPathname]);
 
 	const activeFilterCount = useMemo(() => {
 		return (

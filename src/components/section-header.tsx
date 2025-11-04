@@ -9,6 +9,8 @@ type SectionHeaderProps = {
 	title: string;
 	/** Optional subtitle/description */
 	subtitle?: string;
+  /** Optional custom class for the subtitle paragraph (defaults to max-w-2xl) */
+  subtitleClassName?: string;
 	/** Optional action button (e.g., "View All") */
 	action?: {
 		label: string;
@@ -33,6 +35,7 @@ type SectionHeaderProps = {
 export function SectionHeader({ 
 	title, 
 	subtitle, 
+  subtitleClassName,
 	action, 
 	children,
 	className = "",
@@ -79,7 +82,8 @@ export function SectionHeader({
 					{/* Subtitle */}
 					{subtitle && (
 						<p className={cn(
-							"text-sm sm:text-base leading-relaxed max-w-2xl",
+              "text-sm sm:text-base leading-relaxed",
+              subtitleClassName ?? "max-w-2xl",
 							"transition-colors duration-200",
 							isDark 
 								? "text-background/70 sm:text-background/80" 
@@ -95,19 +99,25 @@ export function SectionHeader({
 					<div className="flex items-center gap-3 sm:gap-4 shrink-0">
 						{children}
 						{action && (
-							<Button 
-								variant={isDark ? "secondary" : "outline"} 
-								asChild
-								size="default"
-								className={cn(
-									"group relative overflow-hidden transition-all duration-300",
-									"hover:shadow-lg hover:scale-105 active:scale-100",
-									isDark 
-										? "bg-background/10 text-background hover:bg-background/20 border-background/20 hover:border-background/30" 
-										: "hover:border-primary/50 hover:bg-primary/5"
-								)}
-							>
-								<Link href={action.href} className="flex items-center gap-2">
+							action.href.startsWith("#") ? (
+								<Button 
+									variant={isDark ? "secondary" : "outline"} 
+									size="default"
+									className={cn(
+										"group relative overflow-hidden transition-all duration-300",
+										"hover:shadow-lg hover:scale-105 active:scale-100",
+										isDark 
+											? "bg-background/10 text-background hover:bg-background/20 border-background/20 hover:border-background/30" 
+											: "hover:border-primary/50 hover:bg-primary/5"
+									)}
+									onClick={(e) => {
+										e.preventDefault();
+										const element = document.querySelector(action.href);
+										if (element) {
+											element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+										}
+									}}
+								>
 									<span className="relative z-10">{action.label}</span>
 									<ArrowRight className="w-4 h-4 relative z-10 transition-transform duration-300 group-hover:translate-x-1" />
 									{/* Shine effect on hover */}
@@ -118,8 +128,34 @@ export function SectionHeader({
 											? "bg-gradient-to-r from-transparent via-background/10 to-transparent"
 											: "bg-gradient-to-r from-transparent via-primary/10 to-transparent"
 									)} />
-								</Link>
-							</Button>
+								</Button>
+							) : (
+								<Button 
+									variant={isDark ? "secondary" : "outline"} 
+									asChild
+									size="default"
+									className={cn(
+										"group relative overflow-hidden transition-all duration-300",
+										"hover:shadow-lg hover:scale-105 active:scale-100",
+										isDark 
+											? "bg-background/10 text-background hover:bg-background/20 border-background/20 hover:border-background/30" 
+											: "hover:border-primary/50 hover:bg-primary/5"
+									)}
+								>
+									<Link href={action.href} className="flex items-center gap-2">
+										<span className="relative z-10">{action.label}</span>
+										<ArrowRight className="w-4 h-4 relative z-10 transition-transform duration-300 group-hover:translate-x-1" />
+										{/* Shine effect on hover */}
+										<span className={cn(
+											"absolute inset-0 -translate-x-full group-hover:translate-x-full",
+											"transition-transform duration-700 ease-in-out",
+											isDark 
+												? "bg-gradient-to-r from-transparent via-background/10 to-transparent"
+												: "bg-gradient-to-r from-transparent via-primary/10 to-transparent"
+										)} />
+									</Link>
+								</Button>
+							)
 						)}
 					</div>
 				)}

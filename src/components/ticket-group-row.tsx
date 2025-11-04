@@ -67,29 +67,21 @@ export function TicketGroupRow({
         isOutOfStock && "opacity-50"
       )}
     >
-      <div className="p-2.5">
-        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
+      <div className="px-2 py-1">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
           {/* Left: Ticket Info */}
           <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-1.5 flex-wrap mb-1">
+            <div className="space-y-1">
               <span className="text-xs font-semibold text-foreground">
                 {ticketType}
               </span>{" "}
-              <div className="text-right">
+              <div className="text-left">
                 <div className="font-bold text-sm text-foreground">
                   £{minPrice.toFixed(0)}
                 </div>
               </div>
             </div>
 
-            {stock > 0 && (
-              <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
-                <Ticket className="w-3 h-3" />
-                <span>
-                  {stock} {stock === 1 ? "ticket" : "tickets"} available
-                </span>
-              </div>
-            )}
           </div>
 
 

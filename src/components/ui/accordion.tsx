@@ -22,14 +22,14 @@ const AccordionTrigger = React.forwardRef<
     <AccordionPrimitive.Trigger
       ref={ref}
       className={cn(
-        "flex flex-1 items-center justify-between py-4 text-left text-sm font-medium transition-all hover:underline",
+        "flex flex-1 items-center justify-between py-4 text-left text-sm font-medium transition-all hover:underline accordion-trigger",
         className
       )}
       {...props}
     >
       {children}
       <svg
-        className="h-4 w-4 shrink-0 transition-transform data-[state=open]:rotate-180"
+        className="h-4 w-4 shrink-0 transition-transform duration-200 ease-out accordion-chevron"
         viewBox="0 0 24 24"
         fill="none"
         stroke="currentColor"
@@ -57,7 +57,7 @@ const AccordionContent = React.forwardRef<
     )}
     {...props}
   >
-    <div className="pt-0 pb-4">{children}</div>
+    <div className="pt-0 pb-2">{children}</div>
   </AccordionPrimitive.Content>
 ));
 AccordionContent.displayName = AccordionPrimitive.Content.displayName;

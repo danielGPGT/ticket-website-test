@@ -391,9 +391,9 @@ export function EventDetailContent({ event, tickets, categories, sportPath }: Ev
 				/>
 
 				{/* Two Column Layout: Tickets (Left) | Venue Map (Right) */}
-				<div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
+				<div className="grid grid-cols-1 lg:grid-cols-5 gap-6 lg:gap-8">
 					{/* Left Column: Tickets Section */}
-					<div id="tickets" className="lg:col-span-1 space-y-6 scroll-mt-8">
+					<div id="tickets" className="lg:col-span-2 space-y-6 scroll-mt-8">
 						<div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-2 border-b">
 							<h2 className="text-xl md:text-xl font-bold text-foreground">Available Tickets</h2>
 							{groups.length > 0 && (
@@ -444,7 +444,7 @@ export function EventDetailContent({ event, tickets, categories, sportPath }: Ev
 						};
 
 						return (
-							<Accordion type="multiple" className="w-full space-y-2">
+							<Accordion type="single" collapsible className="w-full space-y-2">
 								{typeOrder.filter((t) => typeToEntries.has(t)).map((typeKey) => {
 									// Calculate minimum price across all categories in this type
 									const entries = typeToEntries.get(typeKey)!;
@@ -460,18 +460,18 @@ export function EventDetailContent({ event, tickets, categories, sportPath }: Ev
 									const typeMinPrice = allPrices.length > 0 ? Math.min(...allPrices) : Number.POSITIVE_INFINITY;
 									
 									return (
-									<AccordionItem key={typeKey} value={typeKey} className="border-none rounded-md overflow-hidden">
-										<AccordionTrigger className="px-4 py-4 bg-card hover:no-underline">
+									<AccordionItem key={typeKey} value={typeKey} className="border-none rounded-md overflow-hidden data-[state=open]:bg-primary data-[state=open]:text-primary-foreground transition-colors group">
+										<AccordionTrigger className="px-4 py-4 bg-card hover:no-underline data-[state=open]:bg-primary data-[state=open]:text-primary-foreground transition-colors group">
 											<div className="flex items-center justify-between w-full gap-3 pr-2">
-												<span className="text-base font-semibold text-foreground">{labelFor(typeKey)}</span>
+												<span className="text-base font-semibold">{labelFor(typeKey)}</span>
 												{isFinite(typeMinPrice) && (
-													<span className="text-xs sm:text-sm text-secondary shrink-0">
+													<span className="text-xs sm:text-sm shrink-0 group-data-[state=open]:text-primary-foreground/90">
 														From £{typeMinPrice.toFixed(0)} per person
 													</span>
 												)}
 											</div>
 										</AccordionTrigger>
-										<AccordionContent className="pt-2">
+										<AccordionContent className="p-2 pb-0">
 											<Accordion type="single" collapsible className="w-full space-y-1">
 												{typeToEntries.get(typeKey)!.map(([categoryId, arr]) => {
 													const meta = categoryIdToMeta.get(categoryId);
@@ -491,9 +491,9 @@ export function EventDetailContent({ event, tickets, categories, sportPath }: Ev
 																<AccordionTrigger className="px-3 sm:px-4 py-2 hover:no-underline data-[state=open]:border-b data-[state=open]:border-border">
 																	<div className="flex items-center justify-between w-full gap-2 pr-2">
 																		<div className="flex items-center gap-2 flex-wrap">
-																			<h3 className="font-semibold text-sm sm:text-sm text-foreground">{displayName}</h3>
+																			<h3 className="font-semibold text-xs sm:text-sm text-foreground">{displayName}</h3>
 																		</div>
-																		<div className="shrink-0 text-xs sm:text-sm font-medium text-foreground">From £{isFinite(fromPrice) ? fromPrice.toFixed(0) : "-"}</div>
+																		<div className="shrink-0 text-xs sm:text-xs font-medium text-foreground">From £{isFinite(fromPrice) ? fromPrice.toFixed(0) : "-"}</div>
 																	</div>
 																</AccordionTrigger>
 												<AccordionContent className="pt-0">
@@ -544,6 +544,7 @@ export function EventDetailContent({ event, tickets, categories, sportPath }: Ev
 															</div>
 														);
 														})()}
+														<div className="space-y-2"><h4 className="text-xs mt-4 font-semibold text-foreground">Ticket Options</h4></div>
 																		{arr.map((g: any) => (
 																			<TicketGroupRow
 																				key={`${g.event_id}-${g.category_id}-${g.sub_category}`}
@@ -590,13 +591,14 @@ export function EventDetailContent({ event, tickets, categories, sportPath }: Ev
 
 					{/* Right Column: Venue Map */}
 					{venueId && (
-						<div className="lg:col-span-2">
+						<div className="lg:col-span-3">
 							<div className="sticky top-6">
 								<h3 className="text-lg font-semibold mb-3 text-foreground">Venue Map</h3>
 								<VenueMap 
 									venueId={String(venueId)} 
 									eventId={String(event.id ?? event.event_id ?? "")}
 									categories={categories}
+									tickets={tickets}
 								/>
 							</div>
 						</div>

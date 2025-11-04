@@ -24,8 +24,8 @@ export function formatTicketType(subCategory: string): string {
 	const hasFri = /fri/.test(raw);
 	const hasSat = /sat/.test(raw);
 	const hasSun = /sun/.test(raw);
-	if ((/weekend/.test(raw)) || (hasFri && hasSat && hasSun)) return "Friday—Sunday";
-	if (hasSat && hasSun && !hasFri) return "Saturday—Sunday";
+	if ((/weekend/.test(raw)) || (hasFri && hasSat && hasSun)) return "Fri—Sun (3 days)";
+	if (hasSat && hasSun && !hasFri) return "Sat—Sun (2 days)";
 	if (hasFri && !hasSat && !hasSun) return "Friday";
 	if (hasSat && !hasFri && !hasSun) return "Saturday";
 	if (hasSun && !hasFri && !hasSat) return "Sunday";
@@ -35,7 +35,7 @@ export function formatTicketType(subCategory: string): string {
 		fri_regular: "Friday",
 		sat_regular: "Saturday",
 		sun_regular: "Sunday",
-		weekend_regular: "Friday—Sunday",
+		weekend_regular: "Fri—Sun (3 days)",
 	};
 	if (map[subCategory]) return map[subCategory];
 

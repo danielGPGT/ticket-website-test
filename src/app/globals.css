@@ -471,3 +471,8 @@ body {
 [data-sonner-toast]:not([data-type="success"]):not([data-type="error"]):not([data-type="warning"]):not([data-type="info"]) {
   border: 1px solid var(--border) !important;
 }
+
+/* Accordion chevron animation - each trigger controls its own chevron independently */
+.accordion-trigger[data-state="open"] .accordion-chevron {
+  transform: rotate(180deg);
+}

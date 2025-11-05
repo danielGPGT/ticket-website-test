@@ -273,33 +273,65 @@ export function HeroCarousel() {
 			.replace(/\b\w/g, l => l.toUpperCase());
 	};
 
-	if (loading || events.length === 0) {
-		// Fallback to static hero if no events
+	if (loading) {
+		// Loading skeleton that matches the carousel structure
 		return (
-			<section className="relative overflow-hidden h-[400px] sm:h-[450px] lg:h-[500px]">
-				<div className="absolute inset-0">
-					<Image
-						src={getHeroImage("sports")}
-						alt="Sports hero background"
-						fill
-						priority
-						className="object-cover"
-						sizes="100vw"
-					/>
+			<section className="relative overflow-hidden">
+				<div className="relative h-[350px] sm:h-[420px] md:h-[450px] lg:h-[500px]">
+					{/* Background Skeleton */}
+					<div className="absolute inset-0 bg-muted animate-pulse" />
 					<div className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/50 to-black/90" />
+
+					{/* Content Skeleton */}
+					<div className="relative mx-auto container px-4 h-full flex flex-col justify-end pb-16 sm:pb-20 md:pb-24">
+						<div className="max-w-3xl w-full">
+							{/* Badges Skeleton */}
+							<div className="flex flex-wrap items-center gap-2 mb-3">
+								<div className="h-6 w-20 bg-background/20 rounded animate-pulse" />
+								<div className="h-6 w-16 bg-background/20 rounded-full animate-pulse" />
+							</div>
+
+							{/* Event Name Skeleton */}
+							<div className="mb-4">
+								<div className="h-8 sm:h-10 md:h-12 lg:h-14 w-3/4 bg-background/20 rounded animate-pulse mb-2" />
+								<div className="h-8 sm:h-10 md:h-12 lg:h-14 w-1/2 bg-background/20 rounded animate-pulse" />
+							</div>
+
+							{/* Date and Location Skeleton */}
+							<div className="flex flex-wrap items-center gap-2 mb-5">
+								<div className="h-5 w-40 bg-background/20 rounded animate-pulse" />
+								<div className="h-5 w-32 bg-background/20 rounded animate-pulse" />
+							</div>
+
+							{/* CTA Buttons Skeleton */}
+							<div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 mb-6">
+								<div className="h-11 w-32 bg-background/20 rounded animate-pulse" />
+								<div className="h-11 w-40 bg-background/20 rounded animate-pulse" />
+							</div>
+						</div>
+					</div>
 				</div>
-				<div className="relative mx-auto container px-4 sm:px-6 lg:px-8 h-full flex items-center justify-center">
-					<div className="flex flex-col items-center text-center gap-6 sm:gap-8 max-w-3xl mx-auto">
-						<h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight text-white">
-							Your seat to elite sports
-						</h1>
-						<p className="text-base sm:text-lg text-white/90 max-w-2xl">
-							F1, Football, MotoGP, Tennis and more — verified tickets via XS2. Secure your spot at the world's biggest events.
-						</p>
+
+				{/* Tab Navigation Skeleton */}
+				<div className="absolute bottom-0 left-0 right-0 bg-foreground/40 backdrop-blur-sm border-t border-background/20">
+					<div className="mx-auto container px-4 py-3 sm:py-4">
+						<div className="flex items-center gap-3 overflow-x-auto">
+							{[...Array(4)].map((_, i) => (
+								<div
+									key={i}
+									className="h-8 w-24 sm:w-32 bg-background/20 rounded animate-pulse shrink-0"
+								/>
+							))}
+						</div>
 					</div>
 				</div>
 			</section>
 		);
+	}
+
+	if (events.length === 0) {
+		// Return null if no events (don't show anything)
+		return null;
 	}
 
 	return (

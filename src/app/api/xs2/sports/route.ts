@@ -1,37 +1,62 @@
 import { NextRequest } from "next/server";
+import { getSupabaseAdmin } from "@/lib/supabase-admin";
 
 export async function GET(request: NextRequest) {
-	const qs = new URL(request.url).searchParams;
-	const url = `https://api.xs2event.com/v1/sports?${qs.toString()}`;
+	const { searchParams } = new URL(request.url);
+	const page = parseInt(searchParams.get("page") || "1");
+	const pageSize = parseInt(searchParams.get("page_size") || "100");
 	
 	try {
-		const res = await fetch(url, {
-			headers: { 
-				Accept: "application/json", 
-				"X-Api-Key": process.env.XS2_API_KEY as string 
-			},
-			cache: "no-store",
-		});
+		const supabase = getSupabaseAdmin();
 		
-		if (!res.ok) {
-			const errorText = await res.text();
-			console.error("[API] Sports API error:", res.status, res.statusText, errorText);
+		// Build query
+		let query = supabase
+			.from("sports")
+			.select("*")
+			.order("sport_id", { ascending: true });
+		
+		// Apply pagination
+		const from = (page - 1) * pageSize;
+		const to = from + pageSize - 1;
+		query = query.range(from, to);
+		
+		const { data, error, count } = await query;
+		
+		if (error) {
+			console.error("[API] Sports DB error:", error);
 			return Response.json({ 
 				error: "Failed to fetch sports",
-				status: res.status,
-				details: errorText,
+				status: 500,
+				details: error.message,
 				sports: [],
 				results: [],
 				items: []
-			}, { status: res.status });
+			}, { status: 500 });
 		}
 		
-		const data = await res.json();
-		console.log("[API] Sports API response keys:", Object.keys(data));
-		console.log("[API] Sports API response sample:", data.sports?.[0] ?? data.results?.[0] ?? data.items?.[0] ?? "no data");
-		return Response.json(data, { status: res.status });
+		// Get total count for pagination
+		const { count: totalCount } = await supabase
+			.from("sports")
+			.select("*", { count: "exact", head: true });
+		
+		// Return in XS2-compatible format
+		const response = {
+			sports: data || [],
+			results: data || [],
+			items: data || [],
+			pagination: {
+				page,
+				page_size: pageSize,
+				total: totalCount || 0,
+				total_pages: Math.ceil((totalCount || 0) / pageSize),
+				next_page: page * pageSize < (totalCount || 0) ? page + 1 : null,
+				prev_page: page > 1 ? page - 1 : null,
+			}
+		};
+		
+		return Response.json(response, { status: 200 });
 	} catch (error: any) {
-		console.error("[API] Sports API fetch error:", error);
+		console.error("[API] Sports fetch error:", error);
 		return Response.json({ 
 			error: "Failed to fetch sports",
 			message: error.message,

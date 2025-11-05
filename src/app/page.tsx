@@ -17,8 +17,7 @@ export default function Home() {
 		<div className="min-h-screen bg-background">
 			{/* Hero Carousel */}
 			<HeroCarousel />
-			{/* Popular Events Section */}
-			<PopularEventsSection />
+
 
 			{/* Popular Tournaments */}
 			<PopularTournaments />

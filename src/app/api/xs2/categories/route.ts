@@ -13,16 +13,26 @@ export async function GET(request: NextRequest) {
 		const supabase = getSupabaseAdmin();
 		
 		// First, get the event to find its venue_id
-		const { data: event, error: eventError } = await supabase
+		const { data: eventData, error: eventError } = await supabase
 			.from("events")
 			.select("venue_id")
 			.eq("event_id", eventId)
 			.single();
 		
-		if (eventError || !event) {
+		if (eventError || !eventData) {
 			console.error("[API] Event not found:", eventError);
 			return Response.json({ 
 				error: "Event not found",
+				categories: [],
+				results: [],
+				items: []
+			}, { status: 404 });
+		}
+		
+		const venueId = (eventData as { venue_id: string | null }).venue_id;
+		if (!venueId) {
+			return Response.json({ 
+				error: "Event has no venue",
 				categories: [],
 				results: [],
 				items: []
@@ -33,7 +43,7 @@ export async function GET(request: NextRequest) {
 		const { data, error } = await supabase
 			.from("categories")
 			.select("*")
-			.eq("venue_id", event.venue_id)
+			.eq("venue_id", venueId)
 			.order("category_name", { ascending: true });
 		
 		if (error) {

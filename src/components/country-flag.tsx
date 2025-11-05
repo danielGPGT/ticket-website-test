@@ -39,15 +39,33 @@ export function CountryFlag({
 	const countryName = alt ?? `Flag of ${code}`;
 	
 	// Check if className contains width/height classes (responsive sizing)
-	const hasResponsiveSizing = className.includes('w-') || className.includes('h-');
+	const hasWidth = className.includes('w-');
+	const hasHeight = className.includes('h-');
+	const hasResponsiveSizing = hasWidth || hasHeight;
 	
-	// Only use inline styles if no responsive sizing classes are provided
+	// Calculate rectangular dimensions (3:2 aspect ratio for flags - wider than tall)
+	const flagWidth = hasResponsiveSizing ? undefined : size * 1.5;
+	const flagHeight = hasResponsiveSizing ? undefined : size;
+	
+	// Remove height classes if both width and height are provided (to prevent square)
+	// The aspect-ratio will maintain the rectangle shape based on width
+	let processedClassName = className;
+	if (hasWidth && hasHeight) {
+		// Remove height classes to allow aspect-ratio to control height based on width
+		processedClassName = className.replace(/\bh-\d+/g, '').replace(/\bsm:h-\d+/g, '').replace(/\bmd:h-\d+/g, '').replace(/\blg:h-\d+/g, '').replace(/\bxl:h-\d+/g, '').trim();
+	}
+	
+	// Always enforce 3:2 aspect ratio for rectangular flags
 	const inlineStyle: React.CSSProperties = hasResponsiveSizing 
-		? { objectFit: "cover", flexShrink: 0 }
+		? { 
+				objectFit: "cover", 
+				flexShrink: 0, 
+				aspectRatio: "3/2"
+			}
 		: { 
 				objectFit: "cover", 
-				width: `${size}px`, 
-				height: `${size}px`,
+				width: `${flagWidth}px`, 
+				height: `${flagHeight}px`,
 				flexShrink: 0,
 			};
 	
@@ -55,9 +73,9 @@ export function CountryFlag({
 		<img
 			src={flagPath}
 			alt={countryName}
-			width={hasResponsiveSizing ? undefined : size}
-			height={hasResponsiveSizing ? undefined : size}
-			className={`rounded-full border ${className}`}
+			width={flagWidth}
+			height={flagHeight}
+			className={`rounded shadow-md aspect-[3/2] ${processedClassName}`}
 			style={inlineStyle}
 			loading="lazy"
 			onError={(e) => {

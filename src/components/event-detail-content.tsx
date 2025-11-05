@@ -20,6 +20,8 @@ type EventDetailContentProps = {
 	tickets: any[];
 	categories: any[];
 	sportPath?: string; // e.g., "/formula-1" for sport-specific pages
+	tournament?: any; // Tournament object with image column
+	sport?: any; // Sport object with image column
 };
 
 function formatDateRange(startDate?: string, endDate?: string): string {
@@ -115,7 +117,7 @@ function getEventStatus(event: any): { label: string; variant: "default" | "seco
 	return { label: "Coming Soon", variant: "secondary" };
 }
 
-export function EventDetailContent({ event, tickets, categories, sportPath }: EventDetailContentProps) {
+export function EventDetailContent({ event, tickets, categories, sportPath, tournament, sport }: EventDetailContentProps) {
 	if (!event) {
 		return (
 			<div className="container mx-auto px-4 py-8">
@@ -235,6 +237,8 @@ export function EventDetailContent({ event, tickets, categories, sportPath }: Ev
 					eventId={event.id ?? event.event_id}
 					sportType={sportType}
 					event={event}
+					tournament={tournament}
+					sport={sport}
 					alt={eventName}
 					fill
 					priority

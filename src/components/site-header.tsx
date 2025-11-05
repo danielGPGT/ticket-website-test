@@ -112,8 +112,8 @@ export function SiteHeader() {
 			});
 		// Fetch countries that actually have football tournaments/events
 		Promise.all([
-			fetch("/api/xs2/tournaments?sport_type=football&page_size=100"),
-			fetch("/api/xs2/events?sport_type=football&page_size=100"),
+			fetch("/api/xs2/tournaments?sport_type=soccer&page_size=100"),
+			fetch("/api/xs2/events?sport_type=soccer&page_size=100"),
 		])
 			.then(async ([tournamentsRes, eventsRes]) => {
 				const [tournamentsData, eventsData] = await Promise.all([
@@ -375,7 +375,8 @@ export function SiteHeader() {
 
 	return (
 		<header className="sticky top-0 z-50 border-b bg-card">
-			<div className="mx-auto container px-4 py-2 sm:py-3 flex items-center justify-between gap-2 sm:gap-3">
+			{/* Top row: Logo, Search, Account & Cart */}
+			<div className="mx-auto container px-4 py-2 sm:py-1 flex items-center justify-between gap-2 sm:gap-3">
 				{/* Logo - Far Left */}
 				<Link href="/" className="flex items-center gap-2 flex-shrink-0">
 					<Image 
@@ -393,7 +394,7 @@ export function SiteHeader() {
 					<Input placeholder="Find your next event" value={query} onChange={(e) => setQuery(e.target.value)} className="bg-background" />
 				</form>
 
-				{/* Right side - Mobile Icons & Menu, Desktop Navigation */}
+				{/* Right side - Mobile Icons & Menu, Desktop Account & Cart */}
 				<div className="flex items-center gap-1 sm:gap-2 ml-auto">
 					{/* Mobile Account Button */}
 					<DropdownMenu>
@@ -837,29 +838,96 @@ export function SiteHeader() {
 					</SheetContent>
 				</Sheet>
 
-					{/* Desktop Navigation */}
-					<div className="hidden sm:flex">
-						<NavigationMenu>
-							<NavigationMenuList>
+					{/* Desktop Account & Cart */}
+					<div className="hidden sm:flex items-center gap-2">
+						<DropdownMenu>
+							<DropdownMenuTrigger className="rounded-md px-3 py-2 text-sm hover:bg-accent flex items-center gap-2 transition-colors">
+								<User className="w-4 h-4" />
+								<span>Account</span>
+							</DropdownMenuTrigger>
+							<DropdownMenuContent align="end">
+								<DropdownMenuItem asChild>
+									<Link href="#">Sign in</Link>
+								</DropdownMenuItem>
+								<DropdownMenuItem asChild>
+									<Link href="#">Orders</Link>
+								</DropdownMenuItem>
+							</DropdownMenuContent>
+						</DropdownMenu>
+						<Link 
+							href="/cart" 
+							className="relative rounded-md bg-primary text-primary-foreground px-3 py-2 text-sm hover:bg-primary/90 transition-colors flex items-center gap-2"
+						>
+							<ShoppingCart className="w-4 h-4" />
+							<span>Cart</span>
+							{cartItemCount > 0 && (
+								<Badge className="absolute -top-1.5 -right-1.5 h-5 w-5 flex items-center justify-center p-0 text-xs bg-primary text-primary-foreground rounded-full border-2 border-background">
+									{cartItemCount > 99 ? "99+" : cartItemCount}
+								</Badge>
+							)}
+						</Link>
+					</div>
+				</div>
+			</div>
+
+			{/* Second row: Desktop Navigation */}
+			<div className="hidden sm:block border-t bg-card">
+				<div className="mx-auto container px-4 py-2">
+					<NavigationMenu>
+						<NavigationMenuList>
 								{/* Football mega-menu */}
 								<NavigationMenuItem>
-									<NavigationMenuTrigger>Football</NavigationMenuTrigger>
+									<NavigationMenuTrigger onMouseEnter={() => {
+										// Load football countries when hovering over the trigger
+										if (footballCountries.length === 0) {
+											Promise.all([
+												fetch("/api/xs2/tournaments?sport_type=soccer&page_size=100"),
+												fetch("/api/xs2/events?sport_type=soccer&page_size=100"),
+											])
+												.then((responses) => Promise.all(responses.map((r) => r.json())))
+												.then(([tournamentsData, eventsData]) => {
+													const tournaments = tournamentsData.tournaments ?? tournamentsData.results ?? [];
+													const events = eventsData.events ?? eventsData.results ?? [];
+													
+													const codes = new Set<string>();
+													tournaments.forEach((t: any) => {
+														if (t.region && typeof t.region === "string" && t.region.length === 3) {
+															codes.add(t.region);
+														}
+													});
+													events.forEach((e: any) => {
+														if (e.iso_country && typeof e.iso_country === "string" && e.iso_country.length === 3) {
+															codes.add(e.iso_country);
+														}
+													});
+													
+													if (codes.size) setFootballCountries(Array.from(codes).sort());
+												})
+												.catch((err) => {
+													console.error("[SiteHeader] Error fetching football countries:", err);
+												});
+										}
+									}}>Football</NavigationMenuTrigger>
 								<NavigationMenuContent className="p-0">
 									<div className="grid grid-cols-1 md:grid-cols-2 gap-0 min-w-[720px] max-w-[720px]">
 										<div className="border-r p-2 max-h-[420px] overflow-y-auto">
-											{footballCountries.map((code) => (
-												<button
-													key={code}
-													onMouseEnter={() => { setActiveFootballCountry(code); loadCountryData(code); }}
-													className={`w-full text-left flex items-center justify-between px-3 py-2 rounded hover:bg-accent ${activeFootballCountry === code ? "bg-accent" : ""}`}
-												>
-													<span className="flex items-center gap-2">
-														<CountryFlag countryCode={code} size={18} className="flex-shrink-0" />
-														{formatCountryName(code)}
-													</span>
-													<span>›</span>
-												</button>
-											))}
+											{footballCountries.length === 0 ? (
+												<div className="text-sm text-muted-foreground px-3 py-2">Loading countries...</div>
+											) : (
+												footballCountries.map((code) => (
+													<button
+														key={code}
+														onMouseEnter={() => { setActiveFootballCountry(code); loadCountryData(code); }}
+														className={`w-full text-left flex items-center justify-between px-3 py-2 rounded hover:bg-accent ${activeFootballCountry === code ? "bg-accent" : ""}`}
+													>
+														<span className="flex items-center gap-2">
+															<CountryFlag countryCode={code} size={18} className="flex-shrink-0" />
+															{formatCountryName(code)}
+														</span>
+														<span>›</span>
+													</button>
+												))
+											)}
 										</div>
 										<div className="p-3 max-h-[420px] overflow-y-auto">
 											{activeFootballCountry ? (
@@ -1016,38 +1084,7 @@ export function SiteHeader() {
 							</NavigationMenuList>
 						</NavigationMenu>
 					</div>
-
-					{/* Desktop Account & Cart */}
-					<div className="hidden sm:flex items-center gap-2">
-						<DropdownMenu>
-							<DropdownMenuTrigger className="rounded-md px-3 py-2 text-sm hover:bg-accent flex items-center gap-2 transition-colors">
-								<User className="w-4 h-4" />
-								<span>Account</span>
-							</DropdownMenuTrigger>
-							<DropdownMenuContent align="end">
-								<DropdownMenuItem asChild>
-									<Link href="#">Sign in</Link>
-								</DropdownMenuItem>
-								<DropdownMenuItem asChild>
-									<Link href="#">Orders</Link>
-								</DropdownMenuItem>
-							</DropdownMenuContent>
-						</DropdownMenu>
-						<Link 
-							href="/cart" 
-							className="relative rounded-md bg-primary text-primary-foreground px-3 py-2 text-sm hover:bg-primary/90 transition-colors flex items-center gap-2"
-						>
-							<ShoppingCart className="w-4 h-4" />
-							<span>Cart</span>
-							{cartItemCount > 0 && (
-								<Badge className="absolute -top-1.5 -right-1.5 h-5 w-5 flex items-center justify-center p-0 text-xs bg-primary text-primary-foreground rounded-full border-2 border-background">
-									{cartItemCount > 99 ? "99+" : cartItemCount}
-								</Badge>
-							)}
-						</Link>
-					</div>
 				</div>
-			</div>
 		</header>
 	);
 }

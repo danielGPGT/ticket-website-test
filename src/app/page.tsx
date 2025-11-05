@@ -1,3 +1,5 @@
+"use client";
+
 import Image from "next/image";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -11,9 +13,36 @@ import { SectionHeader } from "@/components/section-header";
 import { HeroCarousel } from "@/components/hero-carousel";
 import { HeroSearch } from "@/components/hero-search";
 import { getSportImage } from "@/lib/images";
+import { useEffect, useState } from "react";
+
+const sportCategories = [
+	{ id: "formula1", name: "Formula 1", description: "Grand Prix weekends and hospitality", href: "/formula-1" },
+	{ id: "soccer", name: "Football", description: "Top leagues and cup fixtures", href: "/football" },
+	{ id: "motogp", name: "MotoGP", description: "Race day and weekend passes", href: "/motogp" },
+	{ id: "tennis", name: "Tennis", description: "Grand Slams and tours", href: "/tennis" },
+];
 
 export default function Home() {
-  return (
+	const [sports, setSports] = useState<Record<string, any>>({});
+
+	useEffect(() => {
+		// Fetch sports from API to get image column
+		fetch("/api/xs2/sports")
+			.then((r) => r.json())
+			.then((d) => {
+				const sportsArray = (d.sports ?? d.results ?? []) as any[];
+				const sportsMap: Record<string, any> = {};
+				sportsArray.forEach((sport: any) => {
+					sportsMap[sport.sport_id?.toLowerCase() || ""] = sport;
+				});
+				setSports(sportsMap);
+			})
+			.catch((err) => {
+				console.error("[Home] Error fetching sports:", err);
+			});
+	}, []);
+
+	return (
 		<div className="min-h-screen bg-background">
 			{/* Hero Carousel */}
 			<HeroCarousel />
@@ -33,78 +62,29 @@ export default function Home() {
 						subtitle="Explore tickets for your favorite sports"
 					/>
 					<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-						<Link href="/formula-1">
-							<Card className="group relative overflow-hidden border-0 shadow-md hover:shadow-xl transition-all duration-300 cursor-pointer">
-								<div className="relative h-48 overflow-hidden">
-									<Image
-										src={getSportImage("formula1")}
-										alt="Formula 1"
-										fill
-										className="object-cover transition-transform duration-500 group-hover:scale-110"
-										sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
-									/>
-									<div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent" />
-								</div>
-								<CardContent className="absolute bottom-0 left-0 right-0 text-white">
-									<h3 className="text-xl font-bold mb-1">Formula 1</h3>
-									<p className="text-sm text-white/90">Grand Prix weekends and hospitality</p>
-								</CardContent>
-							</Card>
-						</Link>
-						<Link href="/football">
-							<Card className="group relative overflow-hidden border-0 shadow-md hover:shadow-xl transition-all duration-300 cursor-pointer">
-								<div className="relative h-48 overflow-hidden">
-									<Image
-										src={getSportImage("football")}
-										alt="Football"
-										fill
-										className="object-cover transition-transform duration-500 group-hover:scale-110"
-										sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
-									/>
-									<div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent" />
-								</div>
-								<CardContent className="absolute bottom-0 left-0 right-0 text-white">
-									<h3 className="text-xl font-bold mb-1">Football</h3>
-									<p className="text-sm text-white/90">Top leagues and cup fixtures</p>
-								</CardContent>
-							</Card>
-						</Link>
-						<Link href="/motogp">
-							<Card className="group relative overflow-hidden border-0 shadow-md hover:shadow-xl transition-all duration-300 cursor-pointer">
-								<div className="relative h-48 overflow-hidden">
-        <Image
-										src={getSportImage("motogp")}
-										alt="MotoGP"
-										fill
-										className="object-cover transition-transform duration-500 group-hover:scale-110"
-										sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
-									/>
-									<div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent" />
-        </div>
-								<CardContent className="absolute bottom-0 left-0 right-0 text-white">
-									<h3 className="text-xl font-bold mb-1">MotoGP</h3>
-									<p className="text-sm text-white/90">Race day and weekend passes</p>
-								</CardContent>
-							</Card>
-						</Link>
-						<Link href="/tennis">
-							<Card className="group relative overflow-hidden border-0 shadow-md hover:shadow-xl transition-all duration-300 cursor-pointer">
-								<div className="relative h-48 overflow-hidden">
-            <Image
-										src={getSportImage("tennis")}
-										alt="Tennis"
-										fill
-										className="object-cover transition-transform duration-500 group-hover:scale-110"
-										sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
-									/>
-									<div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent" />
-								</div>
-								<CardContent className="absolute bottom-0 left-0 right-0 text-white">
-									<h3 className="text-xl font-bold mb-1">Tennis</h3>
-									<p className="text-sm text-white/90">Grand Slams and tours</p>
-								</CardContent>
-							</Card>
-						</Link>
+						{sportCategories.map((category) => {
+							const sport = sports[category.id];
+							return (
+								<Link key={category.id} href={category.href}>
+									<Card className="group relative overflow-hidden border-0 shadow-md hover:shadow-xl transition-all duration-300 py-0 cursor-pointer">
+										<div className="relative h-48 overflow-hidden">
+											<Image
+												src={getSportImage(category.id, sport)}
+												alt={category.name}
+												fill
+												className="object-cover transition-transform duration-500 group-hover:scale-110"
+												sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
+											/>
+											<div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent" />
+										</div>
+										<CardContent className="absolute bottom-0 left-0 right-0 text-white p-4 overflow-hidden">
+											<h3 className="text-xl font-bold mb-1">{category.name}</h3>
+											<p className="text-sm text-white/90">{category.description}</p>
+										</CardContent>
+									</Card>
+								</Link>
+							);
+						})}
 					</div>
 				</div>
 			</section>

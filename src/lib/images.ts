@@ -6,7 +6,12 @@
  * 
  * Strategy: For thousands of events, we use sport-based images rather than
  * individual event images. This is scalable and maintains visual consistency.
+ * 
+ * Event images are now stored in Supabase Storage and referenced via the
+ * `image` column in the events table.
  */
+
+import { getStorageImageUrl } from "./storage";
 
 // Unsplash image URLs - high quality sports photography
 const UNSPLASH_IMAGES = {
@@ -40,27 +45,29 @@ export const IMAGE_PATHS = UNSPLASH_IMAGES;
 /**
  * Get sport image path
  * 
- * Returns a sport-specific image. This is used for all events within that sport,
- * which is scalable for thousands of events.
- * 
  * Priority:
- * 1. Local file in public/images/sports/{sportType}.jpg (if exists)
- * 2. Unsplash fallback URL
+ * 1. Database image column (Supabase Storage URL or path)
+ * 2. Local file from public/images/sports/ directory
+ * 3. Unsplash fallback URL
  * 
- * To use your own image:
- * 1. Place it in: public/images/sports/{sportType}.jpg
- *    Examples:
- *    - public/images/sports/formula1.jpg
- *    - public/images/sports/football.jpg
- *    - public/images/sports/motogp.jpg
- * 2. Supported formats: .jpg, .jpeg, .png, .webp
- * 3. Recommended size: 1200x800px, < 300KB
- * 
- * Next.js will automatically serve files from the public/ directory.
- * If the file doesn't exist, the Next.js Image component will show a broken image.
- * To avoid this, we fall back to Unsplash URLs when local files aren't available.
+ * @param sportType - Sport type (e.g., "FOOTBALL", "FORMULA1", "tennis")
+ * @param sport - Optional sport object from database with image column
+ * @returns Image path or URL
  */
-export function getSportImage(sportType?: string | null): string {
+export function getSportImage(sportType?: string | null, sport?: any): string {
+	// 1. Check database image column (highest priority - Supabase Storage)
+	if (sport?.image) {
+		const storageUrl = getStorageImageUrl(sport.image);
+		if (storageUrl) {
+			return storageUrl;
+		}
+		// If getStorageImageUrl returns null, it might be a full URL already
+		// Try using it directly if it looks like a URL
+		if (sport.image.startsWith("http://") || sport.image.startsWith("https://")) {
+			return sport.image;
+		}
+	}
+	
 	if (!sportType) {
 		// Try local default, fallback to Unsplash
 		return "/images/sports/default.jpg";
@@ -71,57 +78,112 @@ export function getSportImage(sportType?: string | null): string {
 		.replace(/_/g, "")
 		.replace(/\s+/g, "");
 	
-	// Use local file from public/images/sports/ directory
-	// Next.js automatically serves files from public/ directory
-	// Try .webp first (better compression), then fallback to other formats if needed
+	// 2. Use local file from public/images/sports/ directory
 	const localPath = `/images/sports/${normalized}.webp`;
 	
 	// Return local file path - Next.js will serve it
-	// If the file doesn't exist, you'll see a broken image. In that case, 
-	// you can uncomment the Unsplash fallback below
+	// If the file doesn't exist, fallback to Unsplash
 	return localPath;
 	
-	// Fallback to Unsplash if local file doesn't exist (uncomment if needed):
+	// 3. Fallback to Unsplash if local file doesn't exist (uncomment if needed):
 	// return IMAGE_PATHS.sports[normalized as keyof typeof IMAGE_PATHS.sports] ?? IMAGE_PATHS.sports.default;
+}
+
+/**
+ * Get tournament image path
+ * 
+ * Priority:
+ * 1. Database image column (Supabase Storage URL or path)
+ * 2. Sport-specific image (fallback)
+ * 
+ * @param tournamentId - Tournament ID
+ * @param tournament - Optional tournament object from database with image column
+ * @param sportType - Optional sport type for fallback
+ * @param sport - Optional sport object for fallback
+ * @returns Image path or URL
+ */
+export function getTournamentImage(
+	tournamentId?: string | null,
+	tournament?: any,
+	sportType?: string | null,
+	sport?: any
+): string {
+	// 1. Check database image column (highest priority - Supabase Storage)
+	if (tournament?.image) {
+		const storageUrl = getStorageImageUrl(tournament.image);
+		if (storageUrl) {
+			if (process.env.NODE_ENV === "development") {
+				console.log(`[getTournamentImage] Using tournament image: ${storageUrl}`);
+			}
+			return storageUrl;
+		}
+		// If getStorageImageUrl returns null, it might be a full URL already
+		// Try using it directly if it looks like a URL
+		if (tournament.image.startsWith("http://") || tournament.image.startsWith("https://")) {
+			if (process.env.NODE_ENV === "development") {
+				console.log(`[getTournamentImage] Using tournament image (direct URL): ${tournament.image}`);
+			}
+			return tournament.image;
+		}
+	}
+	
+	// 2. Fallback to sport-specific image
+	if (process.env.NODE_ENV === "development") {
+		console.log(`[getTournamentImage] No tournament image found, falling back to sport image for ${sportType}`);
+	}
+	return getSportImage(sportType, sport);
 }
 
 /**
  * Get event image path
  * 
  * Priority:
- * 1. API-provided image URL (if available)
- * 2. Event-specific local image: public/images/events/{eventId}.webp or {slug}.webp
- * 3. Sport-specific image (fallback)
+ * 1. Event database image column (Supabase Storage URL or path)
+ * 2. API-provided image URL (if available)
+ * 3. Tournament image (if tournament_id is available)
+ * 4. Sport-specific image (fallback)
  * 
- * To add event-specific images:
- * - Place them in: public/images/events/
- * - Name by event ID: {eventId}.webp (e.g., "845e9bbebc7d41b39b5f77a6dd7bd022_spp.webp")
- * - Or name by slug: {event-slug}.webp (e.g., "qatar-grand-prix.webp")
- * - Supported formats: .jpg, .jpeg, .png, .webp
- * - Recommended size: 1200x800px, < 300KB
+ * Image Storage:
+ * - Images stored in Supabase Storage bucket "images" under path "events/{eventId}.webp"
+ * - The database column stores either a full URL or a storage path
+ * - Full URLs are returned as-is, storage paths are converted to public URLs
  */
 export function getEventImage(
 	eventId?: string, 
 	sportType?: string,
-	event?: any // Full event object for slug generation and API image URLs
+	event?: any, // Full event object for slug generation and API image URLs
+	tournament?: any, // Tournament object with image column
+	sport?: any // Sport object with image column
 ): string {
-	// 1. Check if API provides image URL
-	if (event?.image_url || event?.photo_url || event?.image) {
-		return event.image_url || event.photo_url || event.image;
+	// 1. Check event database image column (highest priority - Supabase Storage)
+	if (event?.image) {
+		const storageUrl = getStorageImageUrl(event.image);
+		if (storageUrl) {
+			return storageUrl;
+		}
+		// If getStorageImageUrl returns null, it might be a full URL already
+		// Try using it directly if it looks like a URL
+		if (event.image.startsWith("http://") || event.image.startsWith("https://")) {
+			return event.image;
+		}
 	}
 	
-	// 2. Try event-specific local image (by event ID)
-	// Note: We return the .webp path, but the component will handle fallback
-	// if the file doesn't exist. The actual file might be .jpg, .png, or .webp
-	if (eventId) {
-		const normalizedId = String(eventId).toLowerCase().trim();
-		// Try .webp first (better compression), but component will fallback
-		const eventImageById = `/images/events/${normalizedId}.webp`;
-		return eventImageById;
+	// 2. Check if API provides image URL (legacy support)
+	if (event?.image_url || event?.photo_url) {
+		return event.image_url || event.photo_url;
 	}
 	
-	// 3. Fallback to sport-specific image
-	return getSportImage(sportType);
+	// 3. Fallback to tournament image if tournament_id is available
+	if (event?.tournament_id && tournament) {
+		const tournamentImage = getTournamentImage(event.tournament_id, tournament, sportType, sport);
+		// Only use tournament image if it's not the same as sport image (to avoid unnecessary fallback)
+		if (tournamentImage && tournamentImage !== getSportImage(sportType, sport)) {
+			return tournamentImage;
+		}
+	}
+	
+	// 4. Fallback to sport-specific image
+	return getSportImage(sportType, sport);
 }
 
 /**

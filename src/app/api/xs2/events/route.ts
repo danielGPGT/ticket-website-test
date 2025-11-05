@@ -33,9 +33,12 @@ async function fetchEventsFromDB(
 	
 	// Handle single event request
 	if (eventId) {
+		// Explicitly select all columns including image to ensure it's returned
+		// Using explicit column list to ensure PostgREST includes the image column
+		// Using single-line format to avoid potential parsing issues with multiline strings
 		const { data, error } = await supabase
 			.from("events")
-			.select("*")
+			.select("event_id,event_name,date_start,date_stop,event_status,tournament_id,tournament_name,venue_id,venue_name,location_id,city,iso_country,latitude,longitude,sport_type,season,tournament_type,date_confirmed,date_start_main_event,date_stop_main_event,hometeam_id,hometeam_name,visiting_id,visiting_name,created,updated,event_description,min_ticket_price_eur,max_ticket_price_eur,slug,number_of_tickets,sales_periods,is_popular,created_at,updated_at,image")
 			.eq("event_id", eventId)
 			.single();
 		
@@ -47,11 +50,57 @@ async function fetchEventsFromDB(
 			}));
 		}
 		
-		return { results: [data], events: [data], items: [data], status: 200 };
+		// Debug: Log image column for single event requests
+		// Always log in development to see what's happening
+		const eventData = data as any;
+		console.log("🔍 [API] Single event fetched from Supabase:", {
+			eventId,
+			eventName: eventData.event_name,
+			hasImage: "image" in eventData,
+			imageValue: eventData.image,
+			imageType: typeof eventData.image,
+			allKeys: Object.keys(eventData),
+			allKeysCount: Object.keys(eventData).length,
+		});
+		console.log("🔍 [API] Raw data.image value:", eventData.image);
+		console.log("🔍 [API] Keys include 'image':", Object.keys(eventData).includes("image"));
+		
+		// Ensure image is included in response (even if null)
+		// Explicitly construct the response to guarantee image field is present
+		const responseData: any = { ...(data as any) };
+		if (!("image" in responseData)) {
+			console.warn("⚠️ [API] Image field missing from Supabase response, adding null");
+			responseData.image = null;
+		}
+		console.log("🔍 [API] Response data before return:", {
+			hasImage: "image" in responseData,
+			imageValue: responseData.image,
+			keysCount: Object.keys(responseData).length,
+		});
+		
+		return { results: [responseData], events: [responseData], items: [responseData], status: 200 };
 	}
 	
 	// Build query for list of events
-	let query = supabase.from("events").select("*");
+	// Explicitly include image column to ensure it's returned
+	let query = supabase.from("events").select("*, image");
+	
+	// Debug: Log column names from first event (development only)
+	if (process.env.NODE_ENV === "development") {
+		const { data: sample } = await supabase
+			.from("events")
+			.select("event_id, image")
+			.limit(1)
+			.single();
+		if (sample) {
+			const sampleData = sample as any;
+			console.log("[API] Sample event columns:", {
+				hasImage: "image" in sampleData,
+				imageValue: sampleData.image,
+				allKeys: Object.keys(sampleData),
+			});
+		}
+	}
 	
 	// Extract and apply filters
 	const sportType = searchParams.get("sport_type");
@@ -198,22 +247,67 @@ export async function GET(request: NextRequest) {
 		passthrough.delete("page_number");
 	}
 	
-	// Create stable cache key from query parameters
+	// For single event requests, bypass cache to ensure fresh data with image column
+	// For list requests, use cache but with shorter revalidation
+	if (eventId) {
+		console.log("🔍 [API] Route handler called for eventId:", eventId);
+		try {
+			const paramsCopy = new URLSearchParams(passthrough);
+			const result = await fetchEventsFromDB(eventId, paramsCopy, origin);
+			
+			// Log what we're about to return
+			console.log("🔍 [API] About to return response:", {
+				resultsCount: result.results?.length || 0,
+				firstEventHasImage: result.results?.[0] ? "image" in result.results[0] : false,
+				firstEventImageValue: result.results?.[0]?.image,
+				firstEventKeysCount: result.results?.[0] ? Object.keys(result.results[0]).length : 0,
+			});
+			
+			// Ensure image field is explicitly included in JSON response
+			const response = Response.json(result, { 
+				status: result.status || 200,
+				headers: {
+					'Cache-Control': 'no-store, no-cache, must-revalidate',
+				}
+			});
+			
+			return response;
+		} catch (error: any) {
+			let errorData;
+			try {
+				errorData = JSON.parse(error.message);
+			} catch {
+				errorData = { error: error.message || "Failed to fetch event" };
+			}
+			return Response.json(
+				{
+					...errorData,
+					events: [],
+					results: [],
+					items: [],
+				},
+				{ status: errorData.status || 500 }
+			);
+		}
+	}
+
+	// Create stable cache key from query parameters for list requests
+	// Add version "v2" to force cache invalidation after adding image column
 	const sortedParams = Array.from(passthrough.entries())
 		.sort(([a], [b]) => a.localeCompare(b))
 		.map(([k, v]) => `${k}=${v}`)
 		.join("&");
-	const cacheKey = `events-${eventId || sortedParams || "all"}`;
+	const cacheKey = `events-v2-${sortedParams || "all"}`;
 	
-	// Cache events for 24 hours (86400 seconds)
+	// Cache list requests for 1 hour (3600 seconds) - shorter for faster updates
 	const getCachedEvents = unstable_cache(
 		async () => {
 			const paramsCopy = new URLSearchParams(passthrough);
-			return await fetchEventsFromDB(eventId, paramsCopy, origin);
+			return await fetchEventsFromDB(null, paramsCopy, origin);
 		},
 		[cacheKey],
 		{
-			revalidate: 86400, // 24 hours
+			revalidate: 3600, // 1 hour (reduced from 24 hours)
 			tags: ["events"],
 		}
 	);

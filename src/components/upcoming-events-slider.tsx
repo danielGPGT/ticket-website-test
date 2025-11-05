@@ -121,11 +121,8 @@ export function UpcomingEventsSlider() {
 			const today = new Date().toISOString().split("T")[0];
 			
 			try {
-				// Fetch events and tickets to filter by availability
-				const [eventsRes, ticketsRes] = await Promise.all([
-					fetch(`/api/xs2/events?date_stop=ge:${today}&page_size=50`),
-					fetch(`/api/xs2/tickets?ticket_status=available&stock=gt:0&page_size=500`),
-				]);
+				// Fetch events - use larger page size and check number_of_tickets field instead of tickets API
+				const eventsRes = await fetch(`/api/xs2/events?date_stop=ge:${today}&page_size=100`);
 				
 				if (!eventsRes.ok) {
 					console.error("[UpcomingEvents] API error:", eventsRes.status);
@@ -134,29 +131,31 @@ export function UpcomingEventsSlider() {
 				}
 				
 				const eventsData = await eventsRes.json();
-				const ticketsData = await ticketsRes.json();
 				const events = (eventsData.events ?? eventsData.results ?? eventsData.items ?? []) as any[];
-				const tickets = (ticketsData.tickets ?? ticketsData.results ?? ticketsData.items ?? []) as any[];
-				
-				// Get unique event IDs that have available tickets
-				const eventsWithTickets = new Set(
-					tickets
-						.filter((t: any) => {
-							const stock = Number(t.stock ?? t.quantity ?? 0);
-							const status = String(t.ticket_status ?? t.status ?? "").toLowerCase();
-							return status === "available" && stock > 0;
-						})
-						.map((t: any) => String(t.event_id ?? t.event?.id ?? ""))
-						.filter(Boolean)
-				);
 				
 				const now = new Date();
 				const sorted = events
 					.filter((e: any) => {
-						const eventId = String(e.event_id ?? e.id ?? "");
-						const hasTickets = eventsWithTickets.has(eventId);
 						const startDate = new Date(e.date_start ?? e.date_start_main_event ?? 0);
-						return hasTickets && startDate >= now && !isNaN(startDate.getTime());
+						const isValidDate = startDate >= now && !isNaN(startDate.getTime());
+						
+						// Only show events with status "notstarted"
+						const eventStatus = String(e.event_status ?? "").toLowerCase().trim();
+						const isNotStarted = eventStatus === "notstarted";
+						
+						// Exclude soldout events
+						const isSoldOut = eventStatus === "soldout" || eventStatus === "closed";
+						
+						// Check if event has tickets available:
+						// 1. number_of_tickets field > 0
+						// 2. OR min_ticket_price_eur exists (indicates tickets are available)
+						// 3. OR is_popular flag (indicates it's worth showing)
+						const numberOfTickets = Number(e.number_of_tickets ?? 0);
+						const hasMinPrice = e.min_ticket_price_eur && Number(e.min_ticket_price_eur) > 0;
+						const isPopular = e.is_popular === true;
+						const hasTickets = numberOfTickets > 0 || hasMinPrice || isPopular;
+						
+						return isValidDate && isNotStarted && !isSoldOut && hasTickets;
 					})
 					.sort((a: any, b: any) => {
 						const aDate = new Date(a.date_start ?? a.date_start_main_event ?? 0);
@@ -164,6 +163,20 @@ export function UpcomingEventsSlider() {
 						return aDate.getTime() - bDate.getTime();
 					})
 					.slice(0, 16);
+				
+				if (process.env.NODE_ENV === "development") {
+					console.log("[UpcomingEvents] Found events:", {
+						total: events.length,
+						filtered: sorted.length,
+						sample: sorted.slice(0, 3).map((e: any) => ({
+							id: e.event_id ?? e.id,
+							name: e.event_name ?? e.name,
+							date: e.date_start,
+							tickets: e.number_of_tickets,
+							minPrice: e.min_ticket_price_eur,
+						})),
+					});
+				}
 				
 				setEvents(sorted);
 			} catch (error) {
@@ -230,13 +243,14 @@ export function UpcomingEventsSlider() {
 				<Carousel
 					opts={{
 						align: "start",
-						loop: true,
+						loop: false,
 						dragFree: true,
 					}}
 					plugins={[
 						Autoplay({
 							delay: 4000,
 							stopOnInteraction: false,
+							stopOnMouseEnter: true,
 						}),
 					]}
 					className="w-full"
@@ -253,7 +267,8 @@ export function UpcomingEventsSlider() {
 								<CarouselItem key={e.event_id ?? e.id} className="pl-2 md:pl-4 basis-full md:basis-1/2 lg:basis-1/4 pb-2">
 									<Link href={`/events/${e.event_id ?? e.id}`} className="block h-full">
 										<Card className="group h-full border shadow-md hover:shadow-lg transition-all duration-300 cursor-pointer bg-background hover:border-primary/20">
-											<CardContent>
+											<CardContent className="h-full flex flex-col justify-between">
+												<div>
 												{/* Header with sport badge and flag */}
 												<div className="flex items-start justify-between mb-4">
 													<Badge className="bg-secondary/90 text-primary-foreground shadow-sm rounded">
@@ -266,8 +281,10 @@ export function UpcomingEventsSlider() {
 												<h3 className="font-bold mb-4 line-clamp-2 text-card-foreground group-hover:text-primary transition-colors">
 													{e.event_name ?? e.name ?? e.official_name ?? "Event"}
 												</h3>
+												</div>
 
 												{/* Event Details */}
+												<div className="h-full flex flex-col justify-end">
 												<div className="space-y-3 mb-4">
 													{startDate && (
 														<div className="flex items-center gap-2 text-muted-foreground">
@@ -303,6 +320,7 @@ export function UpcomingEventsSlider() {
 														<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
 													</svg>
 												</Button>
+												</div>
 											</CardContent>
 										</Card>
 									</Link>

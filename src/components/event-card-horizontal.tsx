@@ -218,7 +218,7 @@ export function EventCardHorizontal({
 								<div className="absolute top-4 right-4">
 									<CountryFlag 
 										countryCode={countryCode} 
-										className="w-8 h-8 sm:w-10 sm:h-10 border border-border/50" 
+										className="w-8 h-8 sm:w-10 sm:h-10" 
 									/>
 								</div>
 							)}

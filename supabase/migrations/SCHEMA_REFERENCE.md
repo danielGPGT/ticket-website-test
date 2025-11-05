@@ -7,6 +7,7 @@ This document maps XS2 API response fields to the corresponding database table c
 | XS2 API Field | Database Column | Type | Notes |
 |--------------|----------------|------|-------|
 | `sport_id` | `sport_id` | TEXT | Primary Key |
+| `image` | `image` | TEXT | Path to image in Supabase Storage (e.g., "sports/{sport_id}.webp") or full URL for external images |
 
 ## Countries Table
 
@@ -77,6 +78,7 @@ This document maps XS2 API response fields to the corresponding database table c
 | `number_events` | `number_events` | INTEGER | |
 | `created` | `created` | TIMESTAMP WITH TIME ZONE | From XS2 API |
 | `updated` | `updated` | TIMESTAMP WITH TIME ZONE | From XS2 API |
+| `image` | `image` | TEXT | Path to image in Supabase Storage (e.g., "tournaments/{tournament_id}.webp") or full URL for external images |
 
 ## Events Table
 
@@ -115,6 +117,7 @@ This document maps XS2 API response fields to the corresponding database table c
 | `number_of_tickets` | `number_of_tickets` | INTEGER | |
 | `sales_periods` | `sales_periods` | JSONB | Array of objects: `[{"label": "...", "date_start": "...", "date_stop": "..."}]` |
 | `is_popular` | `is_popular` | BOOLEAN | |
+| `image` | `image` | TEXT | Path to image in Supabase Storage (e.g., "events/{event_id}.webp") or full URL |
 
 ## Categories Table
 

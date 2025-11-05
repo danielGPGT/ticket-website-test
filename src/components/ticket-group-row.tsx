@@ -81,7 +81,7 @@ export function TicketGroupRow({
                 {isLowStock && !isOutOfStock && (
                   <Badge 
                     variant="outline" 
-                    className="h-3.5 sm:h-4 px-1 sm:px-1.5 text-[9px] sm:text-[10px] font-medium border-warning/40 text-warning shrink-0"
+                    className="h-3.5 sm:h-4 px-1 sm:px-1.5 text-[9px] sm:text-[10px] font-medium border-secondary/40 bg-secondary/5 text-secondary shrink-0"
                   >
                     {stock} left
                   </Badge>

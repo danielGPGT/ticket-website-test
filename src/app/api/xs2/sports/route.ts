@@ -9,10 +9,10 @@ export async function GET(request: NextRequest) {
 	try {
 		const supabase = getSupabaseAdmin();
 		
-		// Build query
+		// Build query - explicitly include image column
 		let query = supabase
 			.from("sports")
-			.select("*")
+			.select("sport_id,created_at,updated_at,image")
 			.order("sport_id", { ascending: true });
 		
 		// Apply pagination

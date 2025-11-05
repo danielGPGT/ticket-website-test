@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { CountryFlag } from "@/components/country-flag";
+import { getCountryName } from "@/lib/country-flags";
 import {
 	Carousel,
 	CarouselContent,
@@ -15,7 +16,7 @@ import {
 	type CarouselApi,
 } from "@/components/ui/carousel";
 import Autoplay from "embla-carousel-autoplay";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, Calendar, MapPin } from "lucide-react";
 import { getHeroImage } from "@/lib/images";
 import { EventImageWithFallback } from "@/components/event-image-with-fallback";
 import { cn } from "@/lib/utils";
@@ -25,10 +26,14 @@ type FeaturedEvent = {
 	id: string;
 	name: string;
 	date?: string;
+	dateEnd?: string;
 	countryCode?: string | null;
+	city?: string;
+	venue?: string;
 	sportType?: string;
 	tournamentId?: string;
 	isOnSale?: boolean;
+	event?: any; // Full event object for image column
 };
 
 /**
@@ -43,6 +48,11 @@ export function HeroCarousel() {
 	const [activeIndex, setActiveIndex] = useState(0);
 	const [api, setApi] = useState<CarouselApi>();
 	const router = useRouter();
+	const tabsScrollRef = useRef<HTMLDivElement>(null);
+	const isDraggingRef = useRef(false);
+	const startXRef = useRef(0);
+	const scrollLeftRef = useRef(0);
+	const hasDraggedRef = useRef(false);
 
 	useEffect(() => {
 		if (!api) return;
@@ -51,6 +61,91 @@ export function HeroCarousel() {
 			setActiveIndex(api.selectedScrollSnap());
 		});
 	}, [api]);
+
+	// Mouse drag handlers for tab navigation on desktop
+	useEffect(() => {
+		// Wait for events to load before setting up drag
+		if (events.length === 0) return;
+		
+		const tabsContainer = tabsScrollRef.current;
+		if (!tabsContainer) return;
+
+		let isDown = false;
+		let startX = 0;
+		let scrollLeft = 0;
+
+		const handleMouseDown = (e: MouseEvent) => {
+			// Only start drag on left mouse button
+			if (e.button !== 0) return;
+			
+			isDown = true;
+			isDraggingRef.current = true;
+			hasDraggedRef.current = false;
+			startX = e.pageX - tabsContainer.offsetLeft;
+			scrollLeft = tabsContainer.scrollLeft;
+			tabsContainer.style.cursor = "pointer";
+			tabsContainer.style.userSelect = "none";
+			
+			// Don't prevent default here - let buttons handle clicks, we'll prevent on move
+		};
+
+		const handleMouseLeave = () => {
+			if (isDown) {
+				isDown = false;
+				isDraggingRef.current = false;
+				hasDraggedRef.current = false;
+				tabsContainer.style.cursor = "pointer";
+				tabsContainer.style.userSelect = "";
+			}
+		};
+
+		const handleMouseUp = (e: MouseEvent) => {
+			if (isDown) {
+				isDown = false;
+				isDraggingRef.current = false;
+				tabsContainer.style.cursor = "pointer";
+				tabsContainer.style.userSelect = "";
+				
+				// Reset drag flag after a short delay to allow click handlers to check
+				setTimeout(() => {
+					hasDraggedRef.current = false;
+				}, 100);
+			}
+		};
+
+		const handleMouseMove = (e: MouseEvent) => {
+			if (!isDown) return;
+			
+			const x = e.pageX - tabsContainer.offsetLeft;
+			const walk = (x - startX) * 2; // Scroll speed multiplier
+			
+			// Always scroll when dragging (even if movement is small)
+			tabsContainer.scrollLeft = scrollLeft - walk;
+			
+			// Mark as dragged if movement is significant and prevent default
+			if (Math.abs(walk) > 5) {
+				hasDraggedRef.current = true;
+				e.preventDefault();
+				e.stopPropagation();
+			}
+		};
+
+		// Add event listeners - use capture phase for mousedown to catch events before buttons
+		tabsContainer.addEventListener("mousedown", handleMouseDown);
+		tabsContainer.addEventListener("mouseleave", handleMouseLeave);
+		document.addEventListener("mouseup", handleMouseUp);
+		document.addEventListener("mousemove", handleMouseMove);
+
+		// Set initial cursor
+		tabsContainer.style.cursor = "pointer";
+
+		return () => {
+			tabsContainer.removeEventListener("mousedown", handleMouseDown);
+			tabsContainer.removeEventListener("mouseleave", handleMouseLeave);
+			document.removeEventListener("mouseup", handleMouseUp);
+			document.removeEventListener("mousemove", handleMouseMove);
+		};
+	}, [events.length]);
 
 	useEffect(() => {
 		const fetchFeaturedEvents = async () => {
@@ -75,10 +170,14 @@ export function HeroCarousel() {
 							id: item.event_id ?? item.id,
 							name: item.event_name ?? item.name ?? item.official_name ?? "Event",
 							date: item.date_start ?? item.date_start_main_event,
+							dateEnd: item.date_stop ?? item.date_stop_main_event,
 							countryCode: item.iso_country ?? item.country,
+							city: item.city,
+							venue: item.venue_name ?? item.venue,
 							sportType: item.sport_type,
 							tournamentId: item.tournament_id,
 							isOnSale: item.is_popular || (item.min_ticket_price_eur && item.min_ticket_price_eur > 0),
+							event: item, // Store full event object for image column
 						};
 						
 						// Avoid duplicates
@@ -109,14 +208,32 @@ export function HeroCarousel() {
 		fetchFeaturedEvents();
 	}, []);
 
-	const formatEventDate = (dateStr?: string): string => {
-		if (!dateStr) return "";
+	const formatEventDate = (startDate?: string, endDate?: string): string => {
+		if (!startDate) return "";
 		try {
-			const date = new Date(dateStr);
-			return date.toLocaleDateString(undefined, { 
-				year: "numeric",
-				month: "long",
-			});
+			const start = new Date(startDate);
+			const end = endDate ? new Date(endDate) : null;
+			
+			// Format day of week (3 letters) + day + month
+			const formatDayMonth = (date: Date): string => {
+				const dayOfWeek = new Intl.DateTimeFormat(undefined, { weekday: "short" }).format(date);
+				const day = date.getDate();
+				const month = new Intl.DateTimeFormat(undefined, { month: "short" }).format(date);
+				return `${day} ${month}`;
+			};
+			
+			// If no end date or same day, show single date
+			if (!end || start.toDateString() === end.toDateString()) {
+				const year = start.getFullYear();
+				return `${formatDayMonth(start)}, ${year}`;
+			}
+			
+			// Date range - same year
+			const year = start.getFullYear();
+			const startFormatted = formatDayMonth(start);
+			const endFormatted = formatDayMonth(end);
+			
+			return `${startFormatted} - ${endFormatted}, ${year}`;
 		} catch {
 			return "";
 		}
@@ -216,6 +333,7 @@ export function HeroCarousel() {
                                         <EventImageWithFallback
                                             eventId={event.id}
                                             sportType={event.sportType}
+                                            event={event.event}
                                             alt={event.name}
                                             fill
                                             priority={index === 0}
@@ -243,13 +361,37 @@ export function HeroCarousel() {
 
 											{/* Event Name */}
 											<div className="flex items-center gap-1.5 sm:gap-2 md:gap-3 mb-2 sm:mb-3 md:mb-4">
-												<CountryFlag countryCode={event.countryCode} size={40} className="shrink-0 w-6 h-6 sm:w-8 sm:h-8 md:w-10 md:h-10 lg:w-12 lg:h-12" />
+												
 												<h1 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl xl:text-5xl font-extrabold tracking-tight text-background leading-tight">
-													{event.name} {year}
+													{event.name}
 												</h1>
 											</div>
 
-											{/* Year and CTA Buttons */}
+											{/* Date and Location Metadata */}
+											{(event.date || event.city || event.countryCode) && (
+												<div className="flex flex-wrap items-center gap-2 mb-3 sm:mb-4 md:mb-5 text-sm sm:text-base text-background/90">
+													{event.date && (
+														<span className="font-medium">{formatEventDate(event.date, event.dateEnd)}</span>
+													)}
+													{(event.city || event.countryCode) && (
+														<>
+															{event.date && <span className="text-background/60">|</span>}
+															<CountryFlag countryCode={event.countryCode} size={40} className="shrink-0 w-6 h-6" />
+															<span className="font-medium">
+																{event.city && event.countryCode 
+																	? `${event.city}, ${getCountryName(event.countryCode)}`
+																	: event.city 
+																		? event.city
+																		: event.countryCode
+																			? getCountryName(event.countryCode)
+																			: ""}
+															</span>
+														</>
+													)}
+												</div>
+											)}
+
+											{/* CTA Buttons */}
 											<div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3 md:gap-4 mb-4 sm:mb-5 md:mb-6">
 												{/* Primary CTA */}
 												<Button
@@ -258,7 +400,7 @@ export function HeroCarousel() {
 													className="bg-primary hover:bg-primary/90 text-primary-foreground border-2 border-primary/20 shadow-lg hover:shadow-xl transition-all duration-200 text-xs sm:text-sm md:text-base px-4 sm:px-5 md:px-7 h-10 sm:h-11 md:h-12 w-full sm:w-auto"
 												>
 													<Link href={eventUrl} className="flex items-center justify-center">
-														{year} Book Now
+														Book Now
 														<ArrowRight className="ml-2 w-3.5 h-3.5 sm:w-4 sm:h-4" />
 													</Link>
 												</Button>
@@ -289,25 +431,60 @@ export function HeroCarousel() {
 			{/* Tab Navigation */}
 			<div className="absolute bottom-0 left-0 right-0 bg-foreground/40 backdrop-blur-sm border-t border-background/20">
 				<div className="mx-auto container px-4 py-3 sm:py-4">
-					<div className="flex items-center gap-1.5 sm:gap-3 overflow-x-auto scrollbar-hide [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+					<div 
+						ref={tabsScrollRef}
+						className="flex items-center gap-1.5 sm:gap-3 overflow-x-auto scrollbar-hide [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
+						style={{ cursor: 'pointer' }}
+					>
 						{events.map((event, index) => {
 							const isActive = index === activeIndex;
-							const year = getEventYear(event.date);
+							const formattedDate = formatEventDate(event.date, event.dateEnd);
 							
 							return (
 								<button
 									key={event.id}
-									onClick={() => api?.scrollTo(index)}
+									type="button"
+						onMouseDown={(e: React.MouseEvent) => {
+							// Trigger container drag handler - this ensures drag works when clicking buttons
+							const container = tabsScrollRef.current;
+							if (container && e.button === 0) {
+								const syntheticEvent = new MouseEvent('mousedown', {
+									bubbles: true,
+									cancelable: true,
+									button: 0,
+									clientX: e.clientX,
+									clientY: e.clientY,
+								} as MouseEventInit);
+								// Manually set pageX/pageY as they're not in MouseEventInit
+								Object.defineProperty(syntheticEvent, 'pageX', { value: e.pageX, writable: false });
+								Object.defineProperty(syntheticEvent, 'pageY', { value: e.pageY, writable: false });
+								container.dispatchEvent(syntheticEvent);
+							}
+						}}
+									onClick={(e) => {
+										// Only navigate if we didn't drag
+										if (!hasDraggedRef.current) {
+											api?.scrollTo(index);
+										}
+										// Reset drag flag after click
+										setTimeout(() => {
+											hasDraggedRef.current = false;
+										}, 0);
+									}}
 									className={cn(
-										"relative px-2.5 sm:px-3.5 py-1.5 sm:py-2 text-[11px] sm:text-xs font-medium whitespace-nowrap transition-all duration-200 shrink-0",
+										"relative px-2.5 sm:px-3.5 py-1.5 sm:py-2 text-[11px] sm:text-xs font-medium whitespace-nowrap transition-all duration-200 shrink-0 select-none",
 										isActive
 											? "text-background"
 											: "text-background/60 hover:text-background/80"
 									)}
+									style={{ userSelect: 'none', cursor: 'pointer' }}
 								>
-									{event.name} {year}
+									{event.name}
+									{formattedDate && (
+										<span className="ml-1.5 opacity-80">• {formattedDate}</span>
+									)}
 									{event.isOnSale && (
-										<span className="ml-1 text-primary font-semibold">on sale!</span>
+										<span className="ml-1.5 text-primary font-semibold">on sale!</span>
 									)}
 									{isActive && (
 										<span className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary rounded-full" />

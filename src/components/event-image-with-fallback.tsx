@@ -8,6 +8,8 @@ type EventImageWithFallbackProps = {
 	eventId?: string;
 	sportType?: string;
 	event?: any;
+	tournament?: any;
+	sport?: any;
 	alt: string;
 	fill?: boolean;
 	priority?: boolean;
@@ -19,13 +21,21 @@ type EventImageWithFallbackProps = {
 /**
  * EventImageWithFallback Component
  * 
- * Tries to load event-specific image first, falls back to sport image if event image doesn't exist.
+ * Tries to load event-specific image first, falls back to tournament image, then sport image.
  * Uses onError handler to seamlessly fallback to sport image.
+ * 
+ * Priority:
+ * 1. Event database image column (Supabase Storage URL)
+ * 2. API-provided image URL (legacy)
+ * 3. Tournament image (if tournament_id is available)
+ * 4. Sport-specific image (fallback)
  */
 export function EventImageWithFallback({
 	eventId,
 	sportType,
 	event,
+	tournament,
+	sport,
 	alt,
 	fill = false,
 	priority = false,
@@ -33,45 +43,35 @@ export function EventImageWithFallback({
 	sizes,
 	style,
 }: EventImageWithFallbackProps) {
-	const sportImage = getSportImage(sportType);
+	const sportImage = getSportImage(sportType, sport);
 	
-	// Try multiple extensions for event image (.webp, .jpg, .png, .jpeg)
-	const getEventImagePath = (ext: string) => {
-		if (!eventId) return null;
-		const normalizedId = String(eventId).toLowerCase().trim();
-		return `/images/events/${normalizedId}.${ext}`;
-	};
+	// Get the primary event image (handles Supabase Storage, API URLs, tournament fallback)
+	const primaryEventImage = getEventImage(eventId, sportType, event, tournament, sport);
+	
+	// Determine if it's an external URL (Supabase Storage or API) or local path
+	const isExternalUrl = primaryEventImage.startsWith("http://") || primaryEventImage.startsWith("https://");
+	const isLocalPath = primaryEventImage.startsWith("/images/");
+	
+	// For local paths (like sport images), use them directly
+	// For external URLs, use them directly
+	// If we have a local event path (which shouldn't happen now), skip it
+	const initialSrc = isExternalUrl || isLocalPath 
+		? primaryEventImage 
+		: sportImage; // Fallback to sport image if we got something unexpected
 
-	const eventImagePaths = [
-		getEventImagePath("webp"),
-		getEventImagePath("jpg"),
-		getEventImagePath("jpeg"),
-		getEventImagePath("png"),
-	].filter(Boolean) as string[];
-
-	const [imageSrc, setImageSrc] = useState(eventImagePaths[0] || sportImage);
-	const [currentPathIndex, setCurrentPathIndex] = useState(0);
+	const [imageSrc, setImageSrc] = useState(initialSrc);
 	const [hasError, setHasError] = useState(false);
 
 	const handleError = () => {
-		// Try next extension if available
-		if (currentPathIndex < eventImagePaths.length - 1) {
-			const nextIndex = currentPathIndex + 1;
-			setCurrentPathIndex(nextIndex);
-			setImageSrc(eventImagePaths[nextIndex]);
-		} else {
-			// All extensions failed, fallback to sport image
-			if (!hasError && sportImage && imageSrc !== sportImage) {
-				setHasError(true);
-				setImageSrc(sportImage);
-			}
+		// On any error, fallback to sport image
+		if (!hasError && sportImage && imageSrc !== sportImage) {
+			setHasError(true);
+			setImageSrc(sportImage);
 		}
 	};
 
-	// Use sport image if no event paths, or if we've already errored
-	const finalSrc = (hasError || eventImagePaths.length === 0 || imageSrc === sportImage) 
-		? sportImage 
-		: imageSrc;
+	// Use sport image if we've errored, otherwise use the current image source
+	const finalSrc = (hasError && sportImage) ? sportImage : imageSrc;
 
 	if (fill) {
 		return (

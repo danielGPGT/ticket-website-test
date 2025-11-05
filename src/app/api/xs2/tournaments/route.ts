@@ -12,10 +12,10 @@ export async function GET(request: NextRequest) {
 	try {
 		const supabase = getSupabaseAdmin();
 		
-		// Build query
+		// Build query - explicitly include image column
 		let query = supabase
 			.from("tournaments")
-			.select("*");
+			.select("tournament_id,official_name,season,tournament_type,region,sport_type,date_start,date_stop,slug,number_events,created,updated,created_at,updated_at,image");
 		
 		// Apply filters
 		if (sportType) {

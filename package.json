@@ -7,7 +7,16 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "export-events": "tsx scripts/export-event-ids.ts"
+    "export-events": "tsx scripts/export-event-ids.ts",
+    "sync-event-images": "tsx scripts/sync-event-images.ts",
+    "check-event-images": "tsx scripts/check-event-images.ts",
+    "debug-event-image": "tsx scripts/debug-event-image.ts",
+    "verify-event-image": "tsx scripts/verify-event-image.ts",
+    "sync-sport-images": "tsx scripts/sync-sport-images.ts",
+    "check-sports": "tsx scripts/check-sports.ts",
+    "sync-tournament-images": "tsx scripts/sync-tournament-images.ts",
+    "check-tournament-images": "tsx scripts/check-tournament-images.ts",
+    "find-bundesliga": "tsx scripts/find-bundesliga-tournaments.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",

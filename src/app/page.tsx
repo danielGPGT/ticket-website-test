@@ -2,18 +2,25 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { Button } from "@/components/ui/button";
+import dynamic from "next/dynamic";
 import { Card, CardContent } from "@/components/ui/card";
-import { PopularEventsSection } from "@/components/popular-events-section";
-import { UpcomingEventsSlider } from "@/components/upcoming-events-slider";
-import { StatsBanner } from "@/components/stats-banner";
-import { PopularTournaments } from "@/components/popular-tournaments";
-import { TestimonialsSection } from "@/components/testimonials-section";
 import { SectionHeader } from "@/components/section-header";
 import { HeroCarousel } from "@/components/hero-carousel";
-import { HeroSearch } from "@/components/hero-search";
 import { getSportImage } from "@/lib/images";
 import { useEffect, useState } from "react";
+
+// Defer below-the-fold sections to reduce render-blocking JS
+const PopularTournaments = dynamic(() => import("@/components/popular-tournaments").then(m => m.PopularTournaments), {
+	loading: () => <div className="container mx-auto px-4 py-10"><div className="h-40 w-full rounded-md bg-muted animate-pulse" /></div>,
+});
+
+const UpcomingEventsSlider = dynamic(() => import("@/components/upcoming-events-slider").then(m => m.UpcomingEventsSlider), {
+	loading: () => <div className="container mx-auto px-4 py-10"><div className="h-40 w-full rounded-md bg-muted animate-pulse" /></div>,
+});
+
+const TestimonialsSection = dynamic(() => import("@/components/testimonials-section").then(m => m.TestimonialsSection), {
+	loading: () => <div className="container mx-auto px-4 py-10"><div className="h-32 w-full rounded-md bg-muted animate-pulse" /></div>,
+});
 
 const sportCategories = [
 	{ id: "formula1", name: "Formula 1", description: "Grand Prix weekends and hospitality", href: "/formula-1" },
@@ -48,10 +55,10 @@ export default function Home() {
 			<HeroCarousel />
 
 
-			{/* Popular Tournaments */}
+			{/* Popular Tournaments (deferred) */}
 			<PopularTournaments />
 
-			{/* Upcoming Events Slider */}
+			{/* Upcoming Events Slider (deferred) */}
 			<UpcomingEventsSlider />
 
 			{/* Sport Categories */}
@@ -89,7 +96,7 @@ export default function Home() {
 				</div>
 			</section>
 
-			{/* Testimonials */}
+			{/* Testimonials (deferred) */}
 			<TestimonialsSection />
 
 			{/* Value Props */}

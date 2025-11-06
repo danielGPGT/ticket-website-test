@@ -518,7 +518,7 @@ export function HeroCarousel() {
 												</Badge>
 												{/* "NOW ON SALE" Badge */}
 												{event.isPopular && (
-													<Badge variant="secondary" className="bg-primary/20 text-primary border-primary/30 text-[9px] sm:text-[10px] md:text-xs font-semibold flex items-center gap-1.5 px-2.5 py-0.5 backdrop-blur-sm">
+													<Badge variant="secondary" className="bg-primary/0 border-white/20 backdrop-blur-xs text-[9px] sm:text-[10px] md:text-xs font-semibold flex items-center gap-1.5 text-[9px] sm:text-[10px] md:text-xs font-semibold px-2 sm:px-2.5 py-0.5 sm:py-1 rounded shadow-md">
 													<Flame className="w-2 h-2 mb-0.5" />
 													<span>Popular</span>
 												</Badge>

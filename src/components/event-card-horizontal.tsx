@@ -46,6 +46,11 @@ function formatDate(dateStr?: string): string {
 	}
 }
 
+function formatSportType(sportType?: string): string {
+	if (!sportType) return "";
+	return sportType.replace(/_/g, " ").replace(/\b\w/g, l => l.toUpperCase());
+}
+
 function formatTime(timeStr?: string): string {
 	if (!timeStr) return "";
 	try {
@@ -225,7 +230,7 @@ export function EventCardHorizontal({
 							
 							<div className="space-y-2.5 sm:space-y-3">
 								{/* Event Title - Top Left, Consistent Across All Screen Sizes */}
-								<h3 className="font-bold leading-tight text-foreground group-hover:text-primary transition-colors text-md sm:text-base pr-12 sm:pr-8">
+								<h3 className="font-bold leading-tight text-foreground group-hover:text-primary transition-colors text-sm sm:text-base pr-12 sm:pr-8">
 									{name}
 								</h3>
 
@@ -267,6 +272,11 @@ export function EventCardHorizontal({
 
 								{/* Tags - more compact on mobile */}
 								<div className="flex flex-wrap gap-1.5 sm:gap-2">
+								{sportType && (
+										<Badge variant="secondary" className="text-[10px] sm:text-xs font-normal bg-muted text-muted-foreground px-1.5 py-0.5">
+											{formatSportType(sportType)}
+										</Badge>
+									)}
 									{tournamentName && (
 										<Badge variant="secondary" className="text-[10px] sm:text-xs font-normal bg-muted text-muted-foreground px-1.5 py-0.5">
 											{tournamentName}

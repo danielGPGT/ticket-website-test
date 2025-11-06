@@ -376,7 +376,7 @@ export function SiteHeader() {
 	return (
 		<header className="sticky top-0 z-50 border-b bg-card">
 			{/* Top row: Logo, Search, Account & Cart */}
-			<div className="mx-auto container px-4 py-2 sm:py-1 flex items-center justify-between gap-2 sm:gap-3">
+			<div className="mx-auto container px-4 py-2 sm:py-2 flex items-center justify-between gap-2 sm:gap-3">
 				{/* Logo - Far Left */}
 				<Link href="/" className="flex items-center gap-2 flex-shrink-0">
 					<Image 
@@ -385,7 +385,7 @@ export function SiteHeader() {
 						width={160} 
 						height={26} 
 						priority 
-						className="h-12 sm:h-18 w-auto"
+						className="h-9 sm:h-12 w-auto"
 					/>
 				</Link>
 

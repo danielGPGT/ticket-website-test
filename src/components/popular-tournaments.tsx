@@ -28,122 +28,125 @@ export function PopularTournaments() {
 		const fetchData = async () => {
 			setLoading(true);
 			try {
-				// Fetch sports first to get image data
-				const sportsRes = await fetch("/api/xs2/sports");
-				const sportsData = await sportsRes.json();
-				const sportsArray = (sportsData.sports ?? sportsData.results ?? []) as any[];
-				const sportsMap: Record<string, any> = {};
-				sportsArray.forEach((sport: any) => {
-					const key = sport.sport_id?.toLowerCase() || "";
-					sportsMap[key] = sport;
-				});
-				setSports(sportsMap);
+				// Helper: fetch with timeout to avoid long hangs
+				const fetchWithTimeout = (input: RequestInfo | URL, init?: RequestInit, timeoutMs = 8000) => {
+					const controller = new AbortController();
+					const id = setTimeout(() => controller.abort(), timeoutMs);
+					return fetch(input, { ...(init || {}), signal: controller.signal })
+						.finally(() => clearTimeout(id));
+				};
 
-				// Then fetch tournaments
+				// Fire sports and all tournament requests in parallel
+				const sportsPromise = fetchWithTimeout("/api/xs2/sports");
+				const tournamentFetchPromises = popularLeagues.map((league) =>
+					fetchWithTimeout(`/api/xs2/tournaments?sport_type=${league.sport}&page_size=50`)
+				);
+
+				const results = await Promise.allSettled([sportsPromise, ...tournamentFetchPromises]);
+
+				// Process sports
+				if (results[0].status === "fulfilled") {
+					try {
+						const sportsRes = results[0].value as Response;
+						const sportsData = await sportsRes.json();
+						const sportsArray = (sportsData.sports ?? sportsData.results ?? []) as any[];
+						const sportsMap: Record<string, any> = {};
+						sportsArray.forEach((sport: any) => {
+							const key = sport.sport_id?.toLowerCase() || "";
+							sportsMap[key] = sport;
+						});
+						setSports(sportsMap);
+					} catch (e) {
+						console.error("[PopularTournaments] Error parsing sports:", e);
+					}
+				} else {
+					console.error("[PopularTournaments] Sports fetch failed:", results[0].reason);
+				}
+
+				// Process tournaments by league, mapping index
 				const found: Record<string, string> = {};
 				const tournamentMap: Record<string, any> = {};
+				const now = new Date();
 
-				for (const league of popularLeagues) {
+				// Process all tournaments in parallel and await completion
+				const tournamentPromises: Promise<{ leagueName: string; tournamentId: string; tournament: any } | null>[] = popularLeagues.map(async (league, idx) => {
+					const resIdx = idx + 1; // offset by sports
+					const entry = results[resIdx];
+					if (entry.status !== "fulfilled") {
+						console.error(`[PopularTournaments] ${league.name} fetch failed:`, entry.reason);
+						return null;
+					}
+					
 					try {
-					const res = await fetch(`/api/xs2/tournaments?sport_type=${league.sport}&page_size=50`);
-					const data = await res.json();
-					const items = (data.tournaments ?? data.results ?? []) as any[];
-					
-					// Improved matching: prioritize exact matches, current season, and tournaments with images
-					const searchLower = league.search.toLowerCase();
-					const now = new Date();
-					const matches = items.filter((t: any) => {
-						const name = String(t.official_name ?? t.name ?? "").toLowerCase();
-						return name.includes(searchLower);
-					});
-					
-					// Sort matches by priority:
-					// 1. Exact name match (highest priority)
-					// 2. Current/upcoming season (date_start >= now or date_stop >= now)
-					// 3. Has image
-					// 4. Shorter name (more specific)
-					matches.sort((a: any, b: any) => {
-						const aName = String(a.official_name ?? a.name ?? "").toLowerCase();
-						const bName = String(b.official_name ?? b.name ?? "").toLowerCase();
-						
-						// Exact match first
-						const aExact = aName === searchLower;
-						const bExact = bName === searchLower;
-						if (aExact && !bExact) return -1;
-						if (!aExact && bExact) return 1;
-						
-						// Then prioritize current/upcoming tournaments
-						// A tournament is "current" if:
-						// - It has started (date_start <= now) AND hasn't ended (date_stop >= now or no date_stop), OR
-						// - It's starting in the future (date_start >= now)
-						const aDateStart = a.date_start ? new Date(a.date_start) : null;
-						const aDateStop = a.date_stop ? new Date(a.date_stop) : null;
-						const bDateStart = b.date_start ? new Date(b.date_start) : null;
-						const bDateStop = b.date_stop ? new Date(b.date_stop) : null;
-						
-						const aIsCurrent = aDateStart && (
-							(aDateStart <= now && (!aDateStop || aDateStop >= now)) || // Currently active
-							(aDateStart >= now) // Upcoming
-						);
-						const bIsCurrent = bDateStart && (
-							(bDateStart <= now && (!bDateStop || bDateStop >= now)) || // Currently active
-							(bDateStart >= now) // Upcoming
-						);
-						
-						if (aIsCurrent && !bIsCurrent) return -1;
-						if (!aIsCurrent && bIsCurrent) return 1;
-						
-						// If both are current/upcoming, prefer:
-						// 1. Currently active over upcoming
-						// 2. The one closest to now (most recent start or nearest upcoming start)
-						if (aIsCurrent && bIsCurrent && aDateStart && bDateStart) {
-							const aIsActive = aDateStart <= now && (!aDateStop || aDateStop >= now);
-							const bIsActive = bDateStart <= now && (!bDateStop || bDateStop >= now);
-							
-							// Prefer active over upcoming
-							if (aIsActive && !bIsActive) return -1;
-							if (!aIsActive && bIsActive) return 1;
-							
-							// Both same type, prefer closest to now
-							const aDiff = Math.abs(aDateStart.getTime() - now.getTime());
-							const bDiff = Math.abs(bDateStart.getTime() - now.getTime());
-							return aDiff - bDiff;
-						}
-						
-						// If one is current and one is not, prefer current
-						if (!aIsCurrent && bIsCurrent) return 1;
-						if (aIsCurrent && !bIsCurrent) return -1;
-						
-						// Then prioritize tournaments with images
-						const aHasImage = !!a.image;
-						const bHasImage = !!b.image;
-						if (aHasImage && !bHasImage) return -1;
-						if (!aHasImage && bHasImage) return 1;
-						
-						// Finally, prefer shorter names (more specific)
-						return aName.length - bName.length;
-					});
-					
-					const match = matches[0]; // Take the best match
-						
+						const res = entry.value as Response;
+						const data = await res.json();
+						const items = (data.tournaments ?? data.results ?? []) as any[];
+
+						const searchLower = league.search.toLowerCase();
+						const matches = items.filter((t: any) => {
+							const name = String(t.official_name ?? t.name ?? "").toLowerCase();
+							return name.includes(searchLower);
+						});
+
+						matches.sort((a: any, b: any) => {
+							const aName = String(a.official_name ?? a.name ?? "").toLowerCase();
+							const bName = String(b.official_name ?? b.name ?? "").toLowerCase();
+
+							const aExact = aName === searchLower;
+							const bExact = bName === searchLower;
+							if (aExact && !bExact) return -1;
+							if (!aExact && bExact) return 1;
+
+							const aDateStart = a.date_start ? new Date(a.date_start) : null;
+							const aDateStop = a.date_stop ? new Date(a.date_stop) : null;
+							const bDateStart = b.date_start ? new Date(b.date_start) : null;
+							const bDateStop = b.date_stop ? new Date(b.date_stop) : null;
+
+							const aIsCurrent = aDateStart && ((aDateStart <= now && (!aDateStop || aDateStop >= now)) || (aDateStart >= now));
+							const bIsCurrent = bDateStart && ((bDateStart <= now && (!bDateStop || bDateStop >= now)) || (bDateStart >= now));
+							if (aIsCurrent && !bIsCurrent) return -1;
+							if (!aIsCurrent && bIsCurrent) return 1;
+
+							if (aIsCurrent && bIsCurrent && aDateStart && bDateStart) {
+								const aIsActive = aDateStart <= now && (!aDateStop || aDateStop >= now);
+								const bIsActive = bDateStart <= now && (!bDateStop || bDateStop >= now);
+								if (aIsActive && !bIsActive) return -1;
+								if (!aIsActive && bIsActive) return 1;
+								const aDiff = Math.abs(aDateStart.getTime() - now.getTime());
+								const bDiff = Math.abs(bDateStart.getTime() - now.getTime());
+								return aDiff - bDiff;
+							}
+
+							const aHasImage = !!a.image;
+							const bHasImage = !!b.image;
+							if (aHasImage && !bHasImage) return -1;
+							if (!aHasImage && bHasImage) return 1;
+
+							return aName.length - bName.length;
+						});
+
+						const match = matches[0];
 						if (match) {
 							const tournamentId = match.tournament_id ?? match.id;
-							found[league.name] = tournamentId;
-							// Store full tournament object for image access
-							tournamentMap[tournamentId] = match;
-							// Debug: Log tournament image data
-							if (process.env.NODE_ENV === "development") {
-								console.log(`[PopularTournaments] ${league.name} (${tournamentId}):`, {
-									hasImage: !!match.image,
-									imageValue: match.image,
-									allKeys: Object.keys(match),
-								});
-							}
+							return { leagueName: league.name, tournamentId, tournament: match };
 						}
+						return null;
 					} catch (err) {
-						console.error(`[PopularTournaments] Error fetching ${league.name}:`, err);
+						console.error(`[PopularTournaments] Error processing ${league.name}:`, err);
+						return null;
 					}
-				}
+				});
+
+				// Wait for all tournament processing to complete
+				const tournamentResults = await Promise.all(tournamentPromises);
+				
+				// Populate maps with results
+				tournamentResults.forEach((result) => {
+					if (result) {
+						found[result.leagueName] = result.tournamentId;
+						tournamentMap[result.tournamentId] = result.tournament;
+					}
+				});
 
 				setTournaments(found);
 				setTournamentData(tournamentMap);

@@ -82,8 +82,12 @@ async function fetchEventsFromDB(
 	}
 	
 	// Build query for list of events
-	// Explicitly include image column to ensure it's returned
-	let query = supabase.from("events").select("*, image");
+	// Select only fields needed by homepage/components to reduce payload
+	let query = supabase
+		.from("events")
+		.select(
+			"event_id,event_name,date_start,date_stop,date_start_main_event,date_stop_main_event,event_status,tournament_id,iso_country,city,sport_type,is_popular,min_ticket_price_eur,number_of_tickets,image"
+		);
 	
 	// Debug: Log column names from first event (development only)
 	if (process.env.NODE_ENV === "development") {
@@ -113,6 +117,8 @@ async function fetchEventsFromDB(
 	const dateStop = searchParams.get("date_stop");
 	const page = parseInt(searchParams.get("page") || searchParams.get("page_number") || "1");
 	const pageSize = parseInt(searchParams.get("page_size") || "50");
+	const eventStatus = searchParams.get("event_status");
+	const excludeStatus = searchParams.get("exclude_status"); // comma-separated
 	
 	// Apply filters
 	if (sportType) {
@@ -136,6 +142,19 @@ async function fetchEventsFromDB(
 	}
 	if (isPopular === "true") {
 		query = query.eq("is_popular", true);
+	}
+	if (eventStatus) {
+		query = query.eq("event_status", eventStatus);
+	}
+	if (excludeStatus) {
+		const list = excludeStatus.split(",").map((s) => s.trim()).filter(Boolean);
+		if (list.length === 1) {
+			query = query.neq("event_status", list[0]);
+		} else if (list.length > 1) {
+			// Build OR clause for multiple != comparisons
+			const orParts = list.map((s) => `event_status.neq.${s}`).join(",");
+			query = query.or(orParts);
+		}
 	}
 	
 	// Handle date_stop filter (with operators like "ge:", "gt:", etc.)

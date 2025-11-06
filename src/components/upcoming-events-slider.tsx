@@ -121,8 +121,8 @@ export function UpcomingEventsSlider() {
 			const today = new Date().toISOString().split("T")[0];
 			
 			try {
-				// Fetch events - use larger page size and check number_of_tickets field instead of tickets API
-				const eventsRes = await fetch(`/api/xs2/events?date_stop=ge:${today}&page_size=100`);
+				// Fetch optimized, pre-filtered list from API (smaller payload)
+				const eventsRes = await fetch(`/api/xs2/events?date_stop=ge:${today}&page_size=16&event_status=notstarted&exclude_status=soldout,closed`);
 				
 				if (!eventsRes.ok) {
 					console.error("[UpcomingEvents] API error:", eventsRes.status);
@@ -138,24 +138,11 @@ export function UpcomingEventsSlider() {
 					.filter((e: any) => {
 						const startDate = new Date(e.date_start ?? e.date_start_main_event ?? 0);
 						const isValidDate = startDate >= now && !isNaN(startDate.getTime());
-						
-						// Only show events with status "notstarted"
-						const eventStatus = String(e.event_status ?? "").toLowerCase().trim();
-						const isNotStarted = eventStatus === "notstarted";
-						
-						// Exclude soldout events
-						const isSoldOut = eventStatus === "soldout" || eventStatus === "closed";
-						
-						// Check if event has tickets available:
-						// 1. number_of_tickets field > 0
-						// 2. OR min_ticket_price_eur exists (indicates tickets are available)
-						// 3. OR is_popular flag (indicates it's worth showing)
+						// Check ticket availability hints
 						const numberOfTickets = Number(e.number_of_tickets ?? 0);
 						const hasMinPrice = e.min_ticket_price_eur && Number(e.min_ticket_price_eur) > 0;
 						const isPopular = e.is_popular === true;
-						const hasTickets = numberOfTickets > 0 || hasMinPrice || isPopular;
-						
-						return isValidDate && isNotStarted && !isSoldOut && hasTickets;
+						return isValidDate && (numberOfTickets > 0 || hasMinPrice || isPopular);
 					})
 					.sort((a: any, b: any) => {
 						const aDate = new Date(a.date_start ?? a.date_start_main_event ?? 0);

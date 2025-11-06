@@ -361,7 +361,7 @@ export function EventCardHorizontal({
 								{isAvailable ? (
 									<Button 
 										className="w-full text-white text-xs sm:text-xs py-2.5 sm:py-2 h-auto font-bold shadow-sm hover:opacity-90 flex items-center justify-center gap-1.5"
-										style={{ backgroundColor: '#34D399' }}
+										
 										size="sm"
 									>
 										See tickets

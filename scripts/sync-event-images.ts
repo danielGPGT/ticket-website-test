@@ -71,7 +71,7 @@ async function syncEventImages() {
 
 		// Extract event_id from filename (remove extension)
 		// Example: "845e9bbebc7d41b39b5f77a6dd7bd022_spp.webp" -> "845e9bbebc7d41b39b5f77a6dd7bd022_spp"
-		const eventId = file.name.replace(/\.(webp|jpg|jpeg|png|gif)$/i, "");
+		const eventId = file.name.replace(/\.(webp|jpg|jpeg|png|gif|avif)$/i, "");
 		
 		if (!eventId) {
 			console.warn(`⚠️  Skipping file with invalid name: ${file.name}`);

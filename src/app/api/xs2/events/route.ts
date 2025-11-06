@@ -366,18 +366,56 @@ export async function GET(request: NextRequest) {
 		}
 	}
 
+	// Check if cache should be bypassed (for hero carousel or other fresh data requests)
+	const bypassCache = passthrough.get("no_cache") === "true" || passthrough.get("fresh") === "true";
+	
 	// Create stable cache key from query parameters for list requests
 	// Add version "v2" to force cache invalidation after adding image column
 	const sortedParams = Array.from(passthrough.entries())
+		.filter(([k]) => k !== "no_cache" && k !== "fresh") // Exclude cache-busting params from cache key
 		.sort(([a], [b]) => a.localeCompare(b))
 		.map(([k, v]) => `${k}=${v}`)
 		.join("&");
 	const cacheKey = `events-v2-${sortedParams || "all"}`;
 	
+	// If cache should be bypassed, fetch directly without caching
+	if (bypassCache) {
+		try {
+			const paramsCopy = new URLSearchParams(passthrough);
+			paramsCopy.delete("no_cache");
+			paramsCopy.delete("fresh");
+			const result = await fetchEventsFromDB(null, paramsCopy, origin);
+			return Response.json(result, { 
+				status: result.status || 200,
+				headers: {
+					'Cache-Control': 'no-store, no-cache, must-revalidate',
+				}
+			});
+		} catch (error: any) {
+			let errorData;
+			try {
+				errorData = JSON.parse(error.message);
+			} catch {
+				errorData = { error: error.message || "Failed to fetch events" };
+			}
+			return Response.json(
+				{
+					...errorData,
+					events: [],
+					results: [],
+					items: [],
+				},
+				{ status: errorData.status || 500 }
+			);
+		}
+	}
+	
 	// Cache list requests for 1 hour (3600 seconds) - shorter for faster updates
 	const getCachedEvents = unstable_cache(
 		async () => {
 			const paramsCopy = new URLSearchParams(passthrough);
+			paramsCopy.delete("no_cache");
+			paramsCopy.delete("fresh");
 			return await fetchEventsFromDB(null, paramsCopy, origin);
 		},
 		[cacheKey],

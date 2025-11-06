@@ -37,6 +37,8 @@ type FeaturedEvent = {
 	isOnSale?: boolean;
 	isPopular?: boolean;
 	event?: any; // Full event object for image column
+	tournament?: any; // Tournament object with image column (matching event detail page)
+	sport?: any; // Sport object with image column (matching event detail page)
 };
 
 /**
@@ -160,7 +162,8 @@ export function HeroCarousel() {
 				const responses = await Promise.all([
 					// Fetch only popular Formula 1 events that have not started
 					// Request more events to account for client-side filtering
-					fetch(`/api/xs2/events?sport_type=formula1&date_stop=ge:${today}&page_size=30&is_popular=true&event_status=notstarted&exclude_status=soldout,closed`),
+					// Use no_cache=true to bypass API cache and get fresh event images
+					fetch(`/api/xs2/events?sport_type=formula1&date_stop=ge:${today}&page_size=30&is_popular=true&event_status=notstarted&exclude_status=soldout,closed&no_cache=true`),
 				]);
 
 				const allEvents: FeaturedEvent[] = [];
@@ -225,8 +228,8 @@ export function HeroCarousel() {
 					}
 				}
 
-				// Fetch tournament official names from tournaments table (single request by IDs)
-				const tournamentMap = new Map<string, string>();
+				// Fetch tournament objects (with image column) from tournaments table (single request by IDs)
+				const tournamentMap = new Map<string, any>(); // Store full tournament objects
 				if (tournamentIds.size > 0) {
 					try {
 						const idsCsv = Array.from(tournamentIds).join(",");
@@ -237,7 +240,8 @@ export function HeroCarousel() {
 							for (const t of tournaments) {
 								const tid = t.tournament_id ?? t.id;
 								if (tid) {
-									tournamentMap.set(tid, t.official_name ?? t.tournament_name ?? "");
+									// Store full tournament object (includes image column)
+									tournamentMap.set(tid, t);
 								}
 							}
 						}
@@ -246,22 +250,48 @@ export function HeroCarousel() {
 					}
 				}
 
-				// Enrich events with tournament official names
-				const enrichedEvents = allEvents.map(event => {
-					if (event.tournamentId && tournamentMap.has(event.tournamentId)) {
-						const officialName = tournamentMap.get(event.tournamentId);
-						if (officialName) {
-							// Add tournament official_name to event object
-							return {
-								...event,
-								event: {
-									...event.event,
-									tournament_official_name: officialName,
-								},
-							};
-						}
+				// Fetch sport data (with image column) for all unique sport types
+				const sportTypes = new Set<string>();
+				allEvents.forEach(e => {
+					if (e.sportType) {
+						const sportKey = e.sportType.toLowerCase() === "soccer" ? "football" : e.sportType.toLowerCase();
+						sportTypes.add(sportKey);
 					}
-					return event;
+				});
+				const sportMap = new Map<string, any>();
+				if (sportTypes.size > 0) {
+					try {
+						const sportsRes = await fetch(`/api/xs2/sports`);
+						if (sportsRes.ok) {
+							const sportsData = await sportsRes.json();
+							const sportsArray = (sportsData.sports ?? sportsData.results ?? []) as any[];
+							sportsArray.forEach((sport: any) => {
+								const key = sport.sport_id?.toLowerCase() || "";
+								if (key) {
+									sportMap.set(key, sport);
+								}
+							});
+						}
+					} catch (err) {
+						console.error("[HeroCarousel] Error fetching sports:", err);
+					}
+				}
+
+				// Enrich events with tournament and sport objects (matching event detail page structure)
+				const enrichedEvents = allEvents.map(event => {
+					const tournament = event.tournamentId ? tournamentMap.get(event.tournamentId) : null;
+					const sportKey = event.sportType?.toLowerCase() === "soccer" ? "football" : event.sportType?.toLowerCase();
+					const sport = sportKey ? sportMap.get(sportKey) : null;
+					
+					return {
+						...event,
+						tournament, // Add full tournament object (with image)
+						sport, // Add full sport object (with image)
+						event: {
+							...event.event,
+							tournament_official_name: tournament?.official_name ?? tournament?.tournament_name ?? "",
+						},
+					};
 				});
 
 				// Apply final strict filters: only popular and notstarted
@@ -466,11 +496,13 @@ export function HeroCarousel() {
                                             eventId={event.id}
                                             sportType={event.sportType}
                                             event={event.event}
+                                            tournament={event.tournament}
+                                            sport={event.sport}
                                             alt={event.name}
                                             fill
                                             priority={index === 0}
-									className="object-cover"
-									sizes="100vw"
+                                            className="object-cover"
+                                            sizes="100vw"
                                         />
                                         <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/50 to-black/90" />
                                     </div>

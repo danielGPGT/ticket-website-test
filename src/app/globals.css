@@ -47,18 +47,18 @@ body {
   --primary-950: oklch(0.26 0.05 90);
   --primary-1000: oklch(0.21 0.04 90);
 
-  --secondary-50: oklch(0.97 0.00 0);
---secondary-100: oklch(0.94 0.00 0);
---secondary-200: oklch(0.89 0.00 0);
---secondary-300: oklch(0.84 0.00 0);
---secondary-400: oklch(0.72 0.00 0);
---secondary-500: oklch(0.66 0.00 0);
---secondary-600: oklch(0.58 0.00 0);
---secondary-700: oklch(0.49 0.00 0);
---secondary-800: oklch(0.40 0.00 0);
---secondary-900: oklch(0.31 0.00 0);
---secondary-950: oklch(0.26 0.00 0);
---secondary-1000: oklch(0.21 0.00 0);
+  --secondary-50: oklch(0.9842 0.0032 228.71);
+  --secondary-100: oklch(0.9682 0.0064 229.74);
+  --secondary-200: oklch(0.9213 0.0126 230.32);
+  --secondary-300: oklch(0.869 0.019 231.62);
+  --secondary-400: oklch(0.7047 0.0227 234.18);
+  --secondary-500: oklch(0.554 0.0246 234.94);
+  --secondary-600: oklch(0.4459 0.0239 235);
+  --secondary-700: oklch(0.3723 0.0221 234.88);
+  --secondary-800: oklch(0.2779 0.0189 236.17);
+  --secondary-900: oklch(0.209 0.0176 237.67);
+  --secondary-950: oklch(0.1311 0.0164 238.31);
+  --secondary-1000: oklch(0.0807 0.0151 238.65);
 
     /* ============================================
      SUCCESS COLORS (Emerald)
@@ -132,7 +132,7 @@ body {
   --popover-foreground: var(--base-800);
   --primary: var(--primary-400);
   --primary-foreground: var(--color-white);
-  --secondary: var(--secondary-1000);
+  --secondary: var(--secondary-800);
   --secondary-foreground: var(--color-white);
   --muted: var(--base-100);
   --muted-foreground: var(--base-600);

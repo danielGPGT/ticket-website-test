@@ -203,7 +203,7 @@ export function EventCardHorizontal({
 									</Badge>
 									<Badge 
 									variant="secondary" 
-									className="absolute skew-x-34 -z-1 -top-4 left-6 sm:-top-3 sm:left-8 font-semibold bg-secondary-500  text-secondary-500 rounded flex items-center gap-1.5 px-2 py-0.5 text-xs"
+									className="absolute skew-x-34 -z-1 -top-4 left-6 sm:-top-3 sm:left-8 font-semibold bg-secondary-600  text-secondary-500 rounded flex items-center gap-1.5 px-2 py-0.5 text-xs"
 								>
 									<Flame className="w-3 h-3" />
 									<span className="inline">Popular</span>

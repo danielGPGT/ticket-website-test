@@ -8,14 +8,15 @@ export async function GET(request: NextRequest) {
 	const sportType = searchParams.get("sport_type");
 	const region = searchParams.get("region");
 	const popular = searchParams.get("popular");
+    const tournamentIdsParam = searchParams.get("tournament_ids"); // comma-separated list of IDs
 	
 	try {
 		const supabase = getSupabaseAdmin();
 		
-		// Build query - explicitly include image column
-		let query = supabase
-			.from("tournaments")
-			.select("tournament_id,official_name,season,tournament_type,region,sport_type,date_start,date_stop,slug,number_events,created,updated,created_at,updated_at,image");
+        // Build query - explicitly include image column
+        let query = supabase
+            .from("tournaments")
+            .select("tournament_id,official_name,season,tournament_type,region,sport_type,date_start,date_stop,slug,number_events,created,updated,created_at,updated_at,image");
 		
 		// Apply filters
 		if (sportType) {
@@ -29,8 +30,19 @@ export async function GET(request: NextRequest) {
 			// For now, we'll skip this filter or add it to the schema if needed
 		}
 		
-		// Order by date_start descending (most recent first)
-		query = query.order("date_start", { ascending: false, nullsFirst: false });
+        // Filter by specific tournament IDs if provided (takes precedence)
+        if (tournamentIdsParam) {
+            const ids = tournamentIdsParam
+                .split(",")
+                .map((s) => s.trim())
+                .filter(Boolean);
+            if (ids.length > 0) {
+                query = query.in("tournament_id", ids);
+            }
+        }
+
+        // Order by date_start descending (most recent first)
+        query = query.order("date_start", { ascending: false, nullsFirst: false });
 		
 		// Apply pagination
 		const from = (page - 1) * pageSize;
@@ -50,10 +62,10 @@ export async function GET(request: NextRequest) {
 			}, { status: 500 });
 		}
 		
-		// Get total count for pagination (with same filters)
-		let countQuery = supabase
-			.from("tournaments")
-			.select("*", { count: "exact", head: true });
+        // Get total count for pagination (with same filters)
+        let countQuery = supabase
+            .from("tournaments")
+            .select("*", { count: "exact", head: true });
 		
 		if (sportType) {
 			countQuery = countQuery.eq("sport_type", sportType);
@@ -62,7 +74,17 @@ export async function GET(request: NextRequest) {
 			countQuery = countQuery.eq("region", region);
 		}
 		
-		const { count: totalCount } = await countQuery;
+        if (tournamentIdsParam) {
+            const ids = tournamentIdsParam
+                .split(",")
+                .map((s) => s.trim())
+                .filter(Boolean);
+            if (ids.length > 0) {
+                countQuery = countQuery.in("tournament_id", ids);
+            }
+        }
+
+        const { count: totalCount } = await countQuery;
 		
 		// Return in XS2-compatible format
 		const response = {

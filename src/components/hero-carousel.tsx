@@ -21,6 +21,8 @@ import { getHeroImage } from "@/lib/images";
 import { EventImageWithFallback } from "@/components/event-image-with-fallback";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
+import { getSportPath } from "@/lib/sport-routes";
+import { createEventSlug } from "@/lib/slug";
 
 type FeaturedEvent = {
 	id: string;
@@ -33,6 +35,7 @@ type FeaturedEvent = {
 	sportType?: string;
 	tournamentId?: string;
 	isOnSale?: boolean;
+	isPopular?: boolean;
 	event?: any; // Full event object for image column
 };
 
@@ -151,21 +154,50 @@ export function HeroCarousel() {
 		const fetchFeaturedEvents = async () => {
 			setLoading(true);
 			try {
-				// Fetch Formula 1 events (primary focus)
+				// Fetch Formula 1 events only
 				const today = new Date().toISOString().split("T")[0];
+				
 				const responses = await Promise.all([
-					fetch(`/api/xs2/events?sport_type=formula1&date_stop=ge:${today}&page_size=6&is_popular=true`),
-					fetch(`/api/xs2/events?sport_type=formula1&date_stop=ge:${today}&page_size=6`),
+					// Fetch only popular Formula 1 events that have not started
+					// Request more events to account for client-side filtering
+					fetch(`/api/xs2/events?sport_type=formula1&date_stop=ge:${today}&page_size=30&is_popular=true&event_status=notstarted&exclude_status=soldout,closed`),
 				]);
 
 				const allEvents: FeaturedEvent[] = [];
+				const tournamentIds = new Set<string>();
 				
 				for (const res of responses) {
 					if (!res.ok) continue;
 					const data = await res.json();
 					const items = (data.events ?? data.results ?? data.items ?? []) as any[];
+
+					if (process.env.NODE_ENV === "development") {
+						console.log("[HeroCarousel] Raw API response - total items:", items.length);
+						console.log("[HeroCarousel] Sample items before filtering:", items.slice(0, 5).map((i: any) => ({
+							id: i.event_id ?? i.id,
+							name: i.event_name ?? i.name,
+							status: i.event_status,
+							is_popular: i.is_popular,
+							date_start: i.date_start ?? i.date_start_main_event,
+						})));
+					}
 					
 					for (const item of items) {
+						// STRICT: Must be marked popular (exactly true, not null, not false)
+						if (item.is_popular !== true) {
+							if (process.env.NODE_ENV === "development") {
+								console.log(`[HeroCarousel] ❌ Skipping ${item.event_name} - is_popular is ${item.is_popular} (not true)`);
+							}
+							continue;
+						}
+						// STRICT: Enforce status filters (defensive client-side check)
+						const status = String(item.event_status ?? "").toLowerCase().trim();
+						if (status !== "notstarted") {
+							if (process.env.NODE_ENV === "development") {
+								console.log(`[HeroCarousel] ❌ Skipping ${item.event_name} - status is "${status}" (not "notstarted")`);
+							}
+							continue;
+						}
 						const event: FeaturedEvent = {
 							id: item.event_id ?? item.id,
 							name: item.event_name ?? item.name ?? item.official_name ?? "Event",
@@ -177,8 +209,14 @@ export function HeroCarousel() {
 							sportType: item.sport_type,
 							tournamentId: item.tournament_id,
 							isOnSale: item.is_popular || (item.min_ticket_price_eur && item.min_ticket_price_eur > 0),
+							isPopular: item.is_popular === true,
 							event: item, // Store full event object for image column
 						};
+						
+						// Collect tournament IDs for fetching official names
+						if (event.tournamentId) {
+							tournamentIds.add(event.tournamentId);
+						}
 						
 						// Avoid duplicates
 						if (!allEvents.find(e => e.id === event.id)) {
@@ -187,15 +225,70 @@ export function HeroCarousel() {
 					}
 				}
 
-				// Sort by date and take top 4-6
-				const sorted = allEvents
+				// Fetch tournament official names from tournaments table (single request by IDs)
+				const tournamentMap = new Map<string, string>();
+				if (tournamentIds.size > 0) {
+					try {
+						const idsCsv = Array.from(tournamentIds).join(",");
+						const tRes = await fetch(`/api/xs2/tournaments?tournament_ids=${encodeURIComponent(idsCsv)}&page_size=${tournamentIds.size}`);
+						if (tRes.ok) {
+							const tData = await tRes.json();
+							const tournaments = tData.tournaments ?? tData.results ?? [];
+							for (const t of tournaments) {
+								const tid = t.tournament_id ?? t.id;
+								if (tid) {
+									tournamentMap.set(tid, t.official_name ?? t.tournament_name ?? "");
+								}
+							}
+						}
+					} catch (err) {
+						console.error("[HeroCarousel] Error fetching tournaments:", err);
+					}
+				}
+
+				// Enrich events with tournament official names
+				const enrichedEvents = allEvents.map(event => {
+					if (event.tournamentId && tournamentMap.has(event.tournamentId)) {
+						const officialName = tournamentMap.get(event.tournamentId);
+						if (officialName) {
+							// Add tournament official_name to event object
+							return {
+								...event,
+								event: {
+									...event.event,
+									tournament_official_name: officialName,
+								},
+							};
+						}
+					}
+					return event;
+				});
+
+				// Apply final strict filters: only popular and notstarted
+				const filtered = enrichedEvents
 					.filter(e => e.name && e.date)
+					.filter(e => e.isPopular === true)
+					.filter(e => String(e.event?.event_status ?? "").toLowerCase().trim() === "notstarted");
+
+				// Sort by date (earliest first)
+				const sorted = filtered
 					.sort((a, b) => {
 						const dateA = new Date(a.date || 0).getTime();
 						const dateB = new Date(b.date || 0).getTime();
 						return dateA - dateB;
 					})
 					.slice(0, 6);
+
+				if (process.env.NODE_ENV === "development") {
+					console.log(`[HeroCarousel] ✅ Final result: ${sorted.length} events after all filtering`);
+					console.log(`[HeroCarousel] Events that will be displayed:`, sorted.map((e: any) => ({
+						id: e.id,
+						name: e.name,
+						status: e.event?.event_status,
+						is_popular: e.isPopular,
+						date: e.date,
+					})));
+				}
 
 				setEvents(sorted);
 			} catch (error) {
@@ -353,9 +446,16 @@ export function HeroCarousel() {
 				<CarouselContent className="-ml-0">
 					{events.map((event, index) => {
 						const year = getEventYear(event.date);
-						const eventUrl = event.tournamentId
-							? `/events?tournament_id=${encodeURIComponent(event.tournamentId)}`
-							: `/events/${event.id}`;
+						// Build sport-specific URL with slug
+						// Handle "soccer" -> "football" mapping (database uses "soccer", route uses "football")
+						const normalizedSportType = event.sportType?.toLowerCase() === "soccer" ? "football" : event.sportType;
+						const sportPath = getSportPath(normalizedSportType);
+						const eventSlug = createEventSlug(event.event || event);
+						const eventUrl = sportPath && eventSlug
+							? `${sportPath}/${eventSlug}`
+							: event.tournamentId
+								? `/events?tournament_id=${encodeURIComponent(event.tournamentId)}`
+								: `/events/${event.id}`;
 
 						return (
 							<CarouselItem key={event.id} className="pl-0">
@@ -393,9 +493,21 @@ export function HeroCarousel() {
 
 											{/* Event Name */}
 											<div className="flex items-center gap-1.5 sm:gap-2 md:gap-3 mb-2 sm:mb-3 md:mb-4">
-												
 												<h1 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl xl:text-5xl font-extrabold tracking-tight text-background leading-tight">
-													{event.name}
+													{(() => {
+														// Prioritize official_name from tournaments table, fallback to tournament_name from events
+														const tournamentName = event.event?.tournament_official_name 
+															|| event.event?.tournament_name;
+														if (tournamentName && tournamentName.trim() && tournamentName !== event.name) {
+															return (
+																<>
+
+																	<span>{event.name}</span>
+																</>
+															);
+														}
+														return event.name;
+													})()}
 												</h1>
 											</div>
 
@@ -444,7 +556,10 @@ export function HeroCarousel() {
 													size="lg"
 													className="bg-background/10 backdrop-blur-sm border-background/30 text-background hover:bg-background/20 hover:border-primary/50 transition-all duration-200 text-xs sm:text-sm md:text-base px-4 sm:px-5 md:px-7 h-10 sm:h-11 md:h-12 w-full sm:w-auto"
 												>
-													<Link href={`/events?sport_type=${event.sportType}`} className="flex items-center justify-center">
+													<Link 
+														href={sportPath || `/events?sport_type=${event.sportType}`} 
+														className="flex items-center justify-center"
+													>
 														View All {formatSportType(event.sportType)}
 													</Link>
 												</Button>

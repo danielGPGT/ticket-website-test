@@ -141,21 +141,15 @@ async function fetchEventsFromDB(
 		query = query.ilike("event_name", `%${queryText}%`);
 	}
 	if (isPopular === "true") {
+		// Strict: must be exactly true (not null, not false)
 		query = query.eq("is_popular", true);
 	}
 	if (eventStatus) {
-		query = query.eq("event_status", eventStatus);
+		// Use case-insensitive exact match for status
+		// ilike with exact string (no %) does case-insensitive exact match
+		query = query.ilike("event_status", eventStatus);
 	}
-	if (excludeStatus) {
-		const list = excludeStatus.split(",").map((s) => s.trim()).filter(Boolean);
-		if (list.length === 1) {
-			query = query.neq("event_status", list[0]);
-		} else if (list.length > 1) {
-			// Build OR clause for multiple != comparisons
-			const orParts = list.map((s) => `event_status.neq.${s}`).join(",");
-			query = query.or(orParts);
-		}
-	}
+	// Note: excludeStatus will be handled client-side after fetch for case-insensitive matching
 	
 	// Handle date_stop filter (with operators like "ge:", "gt:", etc.)
 	if (dateStop) {
@@ -196,6 +190,68 @@ async function fetchEventsFromDB(
 		}));
 	}
 	
+	// Apply case-insensitive excludeStatus filter client-side
+	let filteredData = data || [];
+	
+	// Also apply strict client-side filtering for is_popular and event_status
+	// This ensures we catch any events that slipped through server-side filters
+	if (isPopular === "true" || eventStatus || excludeStatus) {
+		const beforeCount = filteredData.length;
+		filteredData = filteredData.filter((item: any) => {
+			// Strict is_popular check
+			if (isPopular === "true" && item.is_popular !== true) {
+				return false;
+			}
+			// Strict event_status check
+			if (eventStatus) {
+				const itemStatus = String(item.event_status || "").toLowerCase().trim();
+				const expectedStatus = String(eventStatus).toLowerCase().trim();
+				if (itemStatus !== expectedStatus) {
+					return false;
+				}
+			}
+			// Exclude statuses
+			if (excludeStatus) {
+				const excludedStatuses = excludeStatus.split(",").map((s) => s.trim().toLowerCase()).filter(Boolean);
+				const itemStatus = String(item.event_status || "").toLowerCase().trim();
+				if (excludedStatuses.includes(itemStatus)) {
+					return false;
+				}
+			}
+			return true;
+		});
+		
+		if (process.env.NODE_ENV === "development") {
+			const excludedCount = beforeCount - filteredData.length;
+			if (excludedCount > 0) {
+				console.log(`[API] Client-side filtering excluded ${excludedCount} events (was ${beforeCount}, now ${filteredData.length})`);
+			}
+		}
+	}
+	
+	// Debug logging for hero carousel requests
+	if (process.env.NODE_ENV === "development" && isPopular === "true" && eventStatus) {
+		console.log(`[API] Hero carousel filter - is_popular=${isPopular}, event_status=${eventStatus}, exclude_status=${excludeStatus}`);
+		console.log(`[API] Raw DB results: ${data?.length || 0}, After filtering: ${filteredData.length}`);
+		if (filteredData.length > 0) {
+			console.log(`[API] ✅ Filtered events (first 5):`, filteredData.slice(0, 5).map((e: any) => ({
+				id: e.event_id,
+				name: e.event_name,
+				status: e.event_status,
+				is_popular: e.is_popular,
+				date_start: e.date_start,
+			})));
+		} else if (data && data.length > 0) {
+			console.log(`[API] ❌ All events were filtered out. Sample of rejected events:`, data.slice(0, 3).map((e: any) => ({
+				id: e.event_id,
+				name: e.event_name,
+				status: e.event_status,
+				is_popular: e.is_popular,
+				date_start: e.date_start,
+			})));
+		}
+	}
+	
 	// Get total count for pagination (with same filters)
 	let countQuery = supabase.from("events").select("*", { count: "exact", head: true });
 	
@@ -230,9 +286,9 @@ async function fetchEventsFromDB(
 	
 	// Return in XS2-compatible format
 	return {
-		events: data || [],
-		results: data || [],
-		items: data || [],
+		events: filteredData,
+		results: filteredData,
+		items: filteredData,
 		pagination: {
 			page,
 			page_size: pageSize,

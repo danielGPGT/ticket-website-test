@@ -15,6 +15,9 @@ export const metadata: Metadata = {
 	},
 };
 
+// Cache the sport index page to speed up initial loads
+export const revalidate = 300;
+
 export default function FootballPage() {
 	return (
 		<SportEventsLayout

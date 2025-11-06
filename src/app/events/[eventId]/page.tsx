@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { EventDetailContent } from "@/components/event-detail-content";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
+ 
 
 async function fetchTickets(eventId: string) {
 	const qs = new URLSearchParams({
@@ -10,9 +11,9 @@ async function fetchTickets(eventId: string) {
 		stock: "gt:0",
 		page_size: "500",
 	});
-	const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL ?? ""}/api/xs2/tickets?${qs.toString()}`, { 
-		cache: "no-store" // Always fetch fresh tickets data
-	});
+    const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL ?? ""}/api/xs2/tickets?${qs.toString()}`, { 
+        cache: "no-store",
+    });
 	if (!res.ok) {
 		if (process.env.NODE_ENV === "development") {
 			console.error("[tickets] fetch failed", res.status, res.statusText);
@@ -69,9 +70,9 @@ async function fetchTournament(tournamentId: string) {
 }
 
 async function fetchCategories(eventId: string) {
-	const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL ?? ""}/api/xs2/categories?event_id=${encodeURIComponent(eventId)}`, { 
-		cache: "no-store" // Always fetch fresh categories data
-	});
+    const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL ?? ""}/api/xs2/categories?event_id=${encodeURIComponent(eventId)}`, { 
+        cache: "no-store",
+    });
 	if (!res.ok) return [];
 	const data = await res.json();
 	return data.categories ?? data.results ?? data.items ?? [];
@@ -117,11 +118,11 @@ export default async function EventDetail(props: { params: { eventId: string } |
 	const maybePromise = props.params as any;
 	const { eventId } = (maybePromise && typeof maybePromise.then === "function") ? await maybePromise : maybePromise;
 	
-	const [event, tickets, categories] = await Promise.all([
-		fetchEvent(eventId),
-		fetchTickets(eventId),
-		fetchCategories(eventId),
-	]);
+    const [event, tickets, categories] = await Promise.all([
+        fetchEvent(eventId),
+        fetchTickets(eventId),
+        fetchCategories(eventId),
+    ]);
 
 	if (!event) {
 		notFound();

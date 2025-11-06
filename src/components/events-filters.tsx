@@ -132,16 +132,19 @@ export function EventsFilters({ onFilterChange, initialFilters = {}, events = []
 			popularEvents: initialFilters.popularEvents ?? false,
 			eventStatus: Array.isArray(initialFilters.eventStatus) ? initialFilters.eventStatus : (initialFilters.eventStatus ? [initialFilters.eventStatus] : []),
 		});
-		setSearchQuery(initialFilters.query || "");
+		// Don't sync searchQuery on mobile - mobile search bar handles it independently
+		if (!isMobile) {
+			setSearchQuery(initialFilters.query || "");
+		}
 		setPriceRange([
 			initialFilters.priceMin ?? 0,
 			initialFilters.priceMax ?? 10000,
 		]);
-	}, [initialFilters]);
+	}, [initialFilters, isMobile]);
 
-	// Sync debounced search query
+	// Sync debounced search query (skip on mobile since mobile search bar handles it)
 	useEffect(() => {
-		if (debouncedSearchQuery !== filters.query) {
+		if (!isMobile && debouncedSearchQuery !== filters.query) {
 			console.log("[EventsFilters] Search query changed:", debouncedSearchQuery);
 			setFilters((prev) => {
 				const newFilters = { ...prev, query: debouncedSearchQuery };
@@ -149,7 +152,7 @@ export function EventsFilters({ onFilterChange, initialFilters = {}, events = []
 				return newFilters;
 			});
 		}
-	}, [debouncedSearchQuery, filters.query, onFilterChange]);
+	}, [debouncedSearchQuery, filters.query, onFilterChange, isMobile]);
 
 	// Load sports from events (no API call needed)
 	useEffect(() => {
@@ -512,20 +515,22 @@ export function EventsFilters({ onFilterChange, initialFilters = {}, events = []
 				</div>
 			</CardHeader>
 			<CardContent className="p-0">
-				{/* Search */}
-				<div className="px-6 pb-4 border-b border-border">
-					<Label htmlFor="search" className="text-sm font-medium flex items-center gap-2 mb-2">
-						<Search className="w-4 h-4" />
-						Search Events
-					</Label>
-					<Input
-						id="search"
-						placeholder="Search by name, venue..."
-						value={searchQuery}
-						onChange={(e) => setSearchQuery(e.target.value)}
-						className="w-full"
-					/>
-				</div>
+				{/* Search - Hidden on mobile since we have a dedicated mobile search bar at the top */}
+				{!isMobile && (
+					<div className="px-6 pb-4 border-b border-border">
+						<Label htmlFor="search" className="text-sm font-medium flex items-center gap-2 mb-2">
+							<Search className="w-4 h-4" />
+							Search Events
+						</Label>
+						<Input
+							id="search"
+							placeholder="Search by name, venue..."
+							value={searchQuery}
+							onChange={(e) => setSearchQuery(e.target.value)}
+							className="w-full"
+						/>
+					</div>
+				)}
 
 				{/* Filter Sections */}
 				<div className="px-6 py-4 space-y-0">

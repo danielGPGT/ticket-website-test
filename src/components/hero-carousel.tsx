@@ -547,14 +547,13 @@ export function HeroCarousel() {
 											{/* Date and Location Metadata */}
 											{(event.date || event.city || event.countryCode) && (
 												<div className="flex flex-wrap items-center gap-2 mb-3 sm:mb-4 md:mb-5 text-sm sm:text-base text-background/90">
-													<CountryFlag countryCode={event.countryCode} size={40} className="block md:hidden shrink-0 w-6 h-6" />
 													{event.date && (
 														<span className="font-medium">{formatEventDate(event.date, event.dateEnd)}</span>
 													)}
 													{(event.city || event.countryCode) && (
 														<>
 															{event.date && <span className="hidden md:block text-background/60">|</span>}
-															<CountryFlag countryCode={event.countryCode} size={40} className="hidden md:block shrink-0 w-6 h-6" />
+															<CountryFlag countryCode={event.countryCode} size={40} className="shrink-0 w-6 h-6" />
 															<span className="hidden md:block font-medium">
 																{event.city && event.countryCode 
 																	? `${event.city}, ${getCountryName(event.countryCode)}`

@@ -18,9 +18,10 @@ import { getSportPath } from "@/lib/sport-routes";
 
 type EventsExplorerEnhancedProps = {
 	hiddenFilters?: string[];
+	overrideQuery?: string; // Optional external query (e.g., mobile search bar) to avoid URL sync
 };
 
-export function EventsExplorerEnhanced({ hiddenFilters = [] }: EventsExplorerEnhancedProps) {
+export function EventsExplorerEnhanced({ hiddenFilters = [], overrideQuery }: EventsExplorerEnhancedProps) {
 	const pathname = usePathname();
 	const { filters, teamId, showAllEvents, updateFilters, clearFilters, activeFilterCount } = useFilters();
 	const { fetchEvents, loading: apiLoading, error } = useEventsAPI();
@@ -38,6 +39,7 @@ export function EventsExplorerEnhanced({ hiddenFilters = [] }: EventsExplorerEnh
 
 	// Debounce filter changes to avoid excessive API calls
 	const debouncedFilters = useDebounce(filters, 300);
+	const effectiveQuery = (overrideQuery ?? debouncedFilters.query)?.trim() || "";
 
 	// Fetch events when filters change
 	useEffect(() => {
@@ -129,6 +131,22 @@ export function EventsExplorerEnhanced({ hiddenFilters = [] }: EventsExplorerEnh
 						}
 						
 						return debouncedFilters.eventStatus.includes(actualStatus);
+					});
+				}
+
+				// Query filter (client-side; supports external overrideQuery)
+				if (effectiveQuery) {
+					const queryLower = effectiveQuery.toLowerCase();
+					filtered = filtered.filter((e: any) => {
+						const eventName = String(e.event_name ?? e.name ?? "").toLowerCase();
+						const venueName = String(e.venue_name ?? e.venue ?? "").toLowerCase();
+						const city = String(e.city ?? "").toLowerCase();
+						const tournamentName = String(e.tournament_name ?? e.tournament_official_name ?? "").toLowerCase();
+						
+						return eventName.includes(queryLower) || 
+						       venueName.includes(queryLower) || 
+						       city.includes(queryLower) ||
+						       tournamentName.includes(queryLower);
 					});
 				}
 

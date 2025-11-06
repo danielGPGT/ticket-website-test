@@ -489,7 +489,7 @@ export function HeroCarousel() {
 
 						return (
 							<CarouselItem key={event.id} className="pl-0">
-								<div className="relative h-[400px] sm:h-[420px] md:h-[450px] lg:h-[500px]">
+								<div className="relative h-[360px] sm:h-[420px] md:h-[450px] lg:h-[500px]">
 									{/* Background Image */}
                                     <div className="absolute inset-0">
                                         <EventImageWithFallback
@@ -519,7 +519,7 @@ export function HeroCarousel() {
 												{/* "NOW ON SALE" Badge */}
 												{event.isPopular && (
 													<Badge variant="secondary" className="bg-primary/20 text-primary border-primary/30 text-[9px] sm:text-[10px] md:text-xs font-semibold flex items-center gap-1.5 px-2.5 py-0.5 backdrop-blur-sm">
-													<Flame className="w-3 h-3" />
+													<Flame className="w-2 h-2 mb-0.5" />
 													<span>Popular</span>
 												</Badge>
 												)}

@@ -517,14 +517,14 @@ export function EventDetailContent({ event, tickets, categories, sportPath, tour
 																							className="absolute font-semibold -top-2.5 left-2 !py-0 bg-secondary text-secondary-foreground rounded flex items-center gap-1 px-1 text-[10px] z-10"
 																						>
 																								<Flame className="w-2 h-2 mb-0.5" />
-																							<span className="inline">Apex choice</span>
+																							<span className="inline">We recommend</span>
 																						</Badge>
 																						<Badge 
 																							variant="secondary" 
 																							className="absolute skew-x-34 z-0 -top-2.5 left-3.5 font-semibold bg-secondary-500 text-secondary-500 rounded flex items-center gap-1 px-1 !py-0 text-[10px]"
 																						>
 																							<Flame className="w-2 h-2 mb-0.5" />
-																							<span className="inline">Apex choice</span>
+																							<span className="inline">We recommend</span>
 																						</Badge>
 																					</>
 																				) : null;

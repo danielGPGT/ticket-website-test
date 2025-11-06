@@ -489,7 +489,7 @@ export function HeroCarousel() {
 
 						return (
 							<CarouselItem key={event.id} className="pl-0">
-								<div className="relative h-[350px] sm:h-[420px] md:h-[450px] lg:h-[500px]">
+								<div className="relative h-[400px] sm:h-[420px] md:h-[450px] lg:h-[500px]">
 									{/* Background Image */}
                                     <div className="absolute inset-0">
                                         <EventImageWithFallback
@@ -520,6 +520,17 @@ export function HeroCarousel() {
 												{event.isOnSale && (
 													<span className="inline-block bg-primary/10 backdrop-blur-sm text-primary border border-primary/20 text-[9px] sm:text-[10px] md:text-xs font-bold px-2 sm:px-2.5 md:px-3 py-0.5 sm:py-1 rounded-full shadow-lg">
 														ON SALE
+													</span>
+												)}
+												{event.isOnSale && (
+													<span className="absolute top-4 right-4 sm:top-6 sm:right-6 text-primary">
+														<Image 
+															src="/images/now-on-sale.png" 
+															alt="NOW ON SALE" 
+															width={100} 
+															height={100} 
+															className="w-20 h-20 sm:w-28 sm:h-28" 
+														/>
 													</span>
 												)}
 											</div>

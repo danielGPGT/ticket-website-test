@@ -16,7 +16,7 @@ import {
 	type CarouselApi,
 } from "@/components/ui/carousel";
 import Autoplay from "embla-carousel-autoplay";
-import { ArrowRight, Calendar, MapPin } from "lucide-react";
+import { ArrowRight, Calendar, MapPin, Flame } from "lucide-react";
 import { getHeroImage } from "@/lib/images";
 import { EventImageWithFallback } from "@/components/event-image-with-fallback";
 import { cn } from "@/lib/utils";
@@ -517,10 +517,11 @@ export function HeroCarousel() {
 													{formatSportType(event.sportType)}
 												</Badge>
 												{/* "NOW ON SALE" Badge */}
-												{event.isOnSale && (
-													<span className="inline-block bg-primary/10 backdrop-blur-sm text-primary border border-primary/20 text-[9px] sm:text-[10px] md:text-xs font-bold px-2 sm:px-2.5 md:px-3 py-0.5 sm:py-1 rounded-full shadow-lg">
-														ON SALE
-													</span>
+												{event.isPopular && (
+													<Badge variant="secondary" className="bg-primary/20 text-primary border-primary/30 text-[9px] sm:text-[10px] md:text-xs font-semibold flex items-center gap-1.5 px-2.5 py-0.5 backdrop-blur-sm">
+													<Flame className="w-3 h-3" />
+													<span>Popular</span>
+												</Badge>
 												)}
 												{event.isOnSale && (
 													<span className="absolute top-4 right-4 sm:top-6 sm:right-6 text-primary">
@@ -529,7 +530,7 @@ export function HeroCarousel() {
 															alt="NOW ON SALE" 
 															width={100} 
 															height={100} 
-															className="w-20 h-20 sm:w-28 sm:h-28" 
+															className="w-20 h-20 sm:w-28 sm:h-28 backdrop-blur-sm" 
 														/>
 													</span>
 												)}

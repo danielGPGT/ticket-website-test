@@ -3,6 +3,51 @@ import { notFound } from "next/navigation";
 import { EventDetailContent } from "@/components/event-detail-content";
 import { createEventSlug, extractEventIdFromSlug } from "@/lib/slug";
 
+type EventRecord = {
+	event_id?: string | number | null;
+	slug?: string | null;
+	[key: string]: unknown;
+};
+
+const EVENT_SELECT = [
+	"event_id",
+	"event_name",
+	"date_start",
+	"date_stop",
+	"event_status",
+	"tournament_id",
+	"tournament_name",
+	"venue_id",
+	"venue_name",
+	"location_id",
+	"city",
+	"iso_country",
+	"latitude",
+	"longitude",
+	"sport_type",
+	"season",
+	"tournament_type",
+	"date_confirmed",
+	"date_start_main_event",
+	"date_stop_main_event",
+	"hometeam_id",
+	"hometeam_name",
+	"visiting_id",
+	"visiting_name",
+	"created",
+	"updated",
+	"event_description",
+	"min_ticket_price_eur",
+	"max_ticket_price_eur",
+	"slug",
+	"number_of_tickets",
+	"sales_periods",
+	"is_popular",
+	"created_at",
+	"updated_at",
+	"image",
+].join(",");
+
 async function fetchTickets(eventId: string) {
 	const qs = new URLSearchParams({
 		event_id: eventId,
@@ -84,38 +129,86 @@ async function fetchAllEvents(sportType: string): Promise<any[]> {
 	return allEvents;
 }
 
+async function fetchEventFromDbBySlug(eventSlug: string): Promise<EventRecord | null> {
+	const { getSupabaseAdmin } = await import("@/lib/supabase-admin");
+	const supabase = getSupabaseAdmin();
+
+	const { data, error } = await supabase
+		.from("events")
+		.select(EVENT_SELECT)
+		.eq("slug", eventSlug)
+		.single();
+
+	if (error || !data) {
+		return null;
+	}
+
+	return data as EventRecord;
+}
+
 async function fetchEventBySlug(eventSlug: string): Promise<{ event: any; eventId: string } | null> {
+	const dbEventBySlug = await fetchEventFromDbBySlug(eventSlug);
+	if (dbEventBySlug) {
+		const eventId = String(dbEventBySlug.event_id ?? "");
+		if (!eventId) {
+			return null;
+		}
+		return {
+			event: { ...dbEventBySlug, slug: dbEventBySlug.slug ?? eventSlug },
+			eventId,
+		};
+	}
+
 	const extractedId = extractEventIdFromSlug(eventSlug);
 	if (extractedId) {
 		const event = await fetchEvent(extractedId);
-		if (event) return { event, eventId: extractedId };
+		if (event) {
+			return {
+				event: { ...event, slug: event.slug ?? eventSlug },
+				eventId: extractedId,
+			};
+		}
 	}
 
 	const events = await fetchAllEvents("football");
-	
+
 	for (const event of events) {
 		const slug = createEventSlug(event);
-		if (slug === eventSlug) {
-			return { event, eventId: String(event.id ?? event.event_id) };
+		if (slug !== eventSlug) continue;
+
+		const eventId = String(event.id ?? event.event_id ?? "");
+		if (!eventId) continue;
+
+		const dbEvent = await fetchEvent(eventId);
+		if (dbEvent) {
+			return {
+				event: { ...event, ...dbEvent, slug: dbEvent.slug ?? eventSlug },
+				eventId,
+			};
 		}
+
+		return {
+			event: { ...event, slug: eventSlug },
+			eventId,
+		};
 	}
 	
 	return null;
 }
 
-async function fetchEvent(eventId: string) {
+async function fetchEvent(eventId: string): Promise<EventRecord | null> {
 	// Query Supabase directly to avoid Next.js fetch caching issues
 	const { getSupabaseAdmin } = await import("@/lib/supabase-admin");
 	const supabase = getSupabaseAdmin();
 	
 	const { data, error } = await supabase
 		.from("events")
-		.select("event_id,event_name,date_start,date_stop,event_status,tournament_id,tournament_name,venue_id,venue_name,location_id,city,iso_country,latitude,longitude,sport_type,season,tournament_type,date_confirmed,date_start_main_event,date_stop_main_event,hometeam_id,hometeam_name,visiting_id,visiting_name,created,updated,event_description,min_ticket_price_eur,max_ticket_price_eur,slug,number_of_tickets,sales_periods,is_popular,created_at,updated_at,image")
+		.select(EVENT_SELECT)
 		.eq("event_id", eventId)
 		.single();
 	
 	if (error || !data) return null;
-	return data;
+	return data as EventRecord;
 }
 
 async function fetchTournament(tournamentId: string) {

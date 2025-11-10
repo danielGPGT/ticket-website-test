@@ -8,6 +8,14 @@ import { SectionHeader } from "@/components/section-header";
 import { HeroCarousel } from "@/components/hero-carousel";
 import { getSportImage } from "@/lib/images";
 import { useEffect, useState } from "react";
+import {
+	Carousel,
+	CarouselContent,
+	CarouselItem,
+	CarouselNext,
+	CarouselPrevious,
+} from "@/components/ui/carousel";
+import Autoplay from "embla-carousel-autoplay";
 
 // Defer below-the-fold sections to reduce render-blocking JS
 const PopularTournaments = dynamic(() => import("@/components/popular-tournaments").then(m => m.PopularTournaments), {
@@ -27,6 +35,9 @@ const sportCategories = [
 	{ id: "soccer", name: "Football", description: "Top leagues and cup fixtures", href: "/football" },
 	{ id: "motogp", name: "MotoGP", description: "Race day and weekend passes", href: "/motogp" },
 	{ id: "tennis", name: "Tennis", description: "Grand Slams and tours", href: "/tennis" },
+	{ id: "rugby", name: "Rugby", description: "Six Nations, Rugby World Cup and more", href: "/rugby" },
+	{ id: "nfl", name: "NFL", description: "Gridiron showdowns across the league", href: "/nfl" },
+	{ id: "basketball", name: "Basketball", description: "NBA, EuroLeague and global fixtures", href: "/basketball" },
 ];
 
 export default function Home() {
@@ -68,31 +79,54 @@ export default function Home() {
 						title="Browse by Sport"
 						subtitle="Explore tickets for your favorite sports"
 					/>
-					<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-						{sportCategories.map((category) => {
-							const sport = sports[category.id];
-							return (
-								<Link key={category.id} href={category.href}>
-									<Card className="group relative overflow-hidden border-0 shadow-md hover:shadow-xl transition-all duration-300 py-0 cursor-pointer">
-										<div className="relative h-48 overflow-hidden">
-											<Image
-												src={getSportImage(category.id, sport)}
-												alt={category.name}
-												fill
-												className="object-cover transition-transform duration-500 group-hover:scale-110"
-												sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
-											/>
-											<div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent" />
-										</div>
-										<CardContent className="absolute bottom-0 left-0 right-0 text-white p-4 overflow-hidden">
-											<h3 className="text-xl font-bold mb-1">{category.name}</h3>
-											<p className="text-sm text-white/90">{category.description}</p>
-										</CardContent>
-									</Card>
-								</Link>
-							);
-						})}
-					</div>
+					<Carousel
+						opts={{
+							align: "start",
+							loop: false,
+							dragFree: true,
+						}}
+						plugins={[
+							Autoplay({
+								delay: 4500,
+								stopOnInteraction: false,
+								stopOnMouseEnter: true,
+							}),
+						]}
+						className="w-full"
+					>
+						<CarouselContent className="-ml-2 sm:-ml-3 lg:-ml-4">
+							{sportCategories.map((category) => {
+								const sport = sports[category.id];
+								return (
+									<CarouselItem
+										key={category.id}
+										className="pl-2 sm:pl-3 lg:pl-4 basis-full sm:basis-1/2 lg:basis-1/3 xl:basis-1/4"
+									>
+										<Link href={category.href} className="block h-full">
+											<Card className="group relative h-full p-0 overflow-hidden border-0 shadow-md hover:shadow-xl transition-all duration-300 cursor-pointer">
+												<div className="relative h-48 md:h-56 overflow-hidden">
+													<Image
+														src={getSportImage(category.id, sport)}
+														alt={category.name}
+														fill
+														className="object-cover transition-transform duration-500 group-hover:scale-110"
+														sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
+													/>
+													<div className="absolute inset-0 bg-linear-to-t from-black/80 via-black/40 to-transparent" />
+												</div>
+												<CardContent className="absolute bottom-0 left-0 right-0 text-white p-4">
+													<h3 className="text-xl font-bold mb-1">{category.name}</h3>
+													<p className="text-sm text-white/90 line-clamp-2">{category.description}</p>
+												</CardContent>
+											</Card>
+										</Link>
+									</CarouselItem>
+								);
+							})}
+						</CarouselContent>
+						<CarouselPrevious className="hidden md:flex -left-10 bg-background/90 backdrop-blur-md border border-border hover:bg-background" />
+						<CarouselNext className="hidden md:flex -right-10 bg-background/90 backdrop-blur-md border border-border hover:bg-background" />
+					</Carousel>
 				</div>
 			</section>
 

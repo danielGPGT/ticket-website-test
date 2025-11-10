@@ -347,14 +347,14 @@ export function EventCardHorizontal({
 										{/* Stock Status Badge - hide on mobile, show on desktop */}
 										{isAvailable && (
 											<Badge variant="secondary" className="hidden sm:inline-flex items-center gap-1 rounded-full mt-0.5 border bg-green-50">
-												<div className="w-1.5 h-1.5 rounded-full shrink-0 bg-green-500" />
-												<span className=" text-xs text-green-500">On sale</span>
+												<div className="w-1.5 h-1.5 rounded-full shrink-0 bg-green-700" />
+												<span className=" text-xs text-green-700">On sale</span>
 											</Badge>
 										)}
 										{isNotConfirmed && (
 											<Badge variant="secondary" className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full mt-0.5 border bg-yellow-50">
-												<div className="w-1.5 h-1.5 rounded-full shrink-0 bg-yellow-500" />
-												<span className=" text-xs text-yellow-500">Not confirmed</span>
+												<div className="w-1.5 h-1.5 rounded-full shrink-0 bg-yellow-700" />
+												<span className=" text-xs text-yellow-700">Not confirmed</span>
 											</Badge>
 										)}
 									</div>
@@ -363,16 +363,16 @@ export function EventCardHorizontal({
 								{isComingSoon && (
 									<div className="hidden sm:flex w-full justify-end">
 										<Badge variant="secondary" className="inline-flex items-center gap-1 rounded-full mt-0.5 border bg-gray-50">
-											<div className="w-1.5 h-1.5 rounded-full shrink-0 bg-gray-500" />
-											<span className="text-xs text-gray-500">Coming soon</span>
+											<div className="w-1.5 h-1.5 rounded-full shrink-0 bg-gray-700" />
+											<span className="text-xs text-gray-700">Coming soon</span>
 										</Badge>
 									</div>
 								)}
 								{isOutOfStock && (
 									<div className="hidden sm:flex w-full justify-end">
 										<Badge variant="secondary" className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full mt-0.5 border bg-red-50">
-											<div className="w-1.5 h-1.5 rounded-full shrink-0 bg-red-600" />
-											<span className=" text-xs text-red-600">Sales closed</span>
+											<div className="w-1.5 h-1.5 rounded-full shrink-0 bg-red-700" />
+											<span className=" text-xs text-red-700">Sales closed</span>
 										</Badge>
 									</div>
 								)}

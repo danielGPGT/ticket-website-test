@@ -67,6 +67,13 @@ function aggregateFacetsFromEvents(events: any[]): Record<string, any> {
 
 		const tId = String(item.tournament_id ?? "").trim();
 		const tName = String(item.tournament_name ?? item.tournament ?? "").trim();
+		let tSeason = item.season ? String(item.season) : "";
+		if (!tSeason && item.date_start) {
+			const date = new Date(item.date_start);
+			if (!Number.isNaN(date.getTime())) {
+				tSeason = String(date.getFullYear());
+			}
+		}
 		if (tId) {
 			const entry = tournamentMap[tId] ?? { id: tId, name: tName || tId, count: 0 };
 			entry.count += 1;
@@ -364,11 +371,27 @@ export function useEventsAPI() {
 				console.log("[useEventsAPI] Total received", allItems.length, "events (after pagination)");
 
 				const aggregatedFacets = aggregateFacetsFromEvents(allItems);
-				if (facetsCoverTotal(serverFacets, allItems.length)) {
-					setFacets(serverFacets as Record<string, any>);
-				} else {
-					setFacets(aggregatedFacets);
+				if (serverFacets && serverFacets.tournaments) {
+					const serverTournamentMap = new Map<string, { name?: string; season?: string }>();
+					(serverFacets.tournaments as Array<{ id?: string; name?: string; season?: string }>).forEach((t: { id?: string; name?: string; season?: string }) => {
+						if (!t?.id) return;
+						serverTournamentMap.set(String(t.id), {
+							name: t.name,
+							season: t.season,
+						});
+					});
+
+					aggregatedFacets.tournaments = (aggregatedFacets.tournaments ?? []).map((t: { id: string; name: string; season?: string; count: number }) => {
+						const serverEntry = serverTournamentMap.get(t.id);
+						if (!serverEntry) return t;
+						return {
+							...t,
+							name: serverEntry.name ?? t.name,
+							season: serverEntry.season ?? t.season,
+						};
+					});
 				}
+				setFacets(aggregatedFacets);
 
 				if (abortController.signal.aborted) {
 					throw new Error("Request aborted");

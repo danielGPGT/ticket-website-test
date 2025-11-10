@@ -827,7 +827,7 @@ export function SiteHeader() {
 							{/* Quick Links */}
 							<div className="mt-6 pt-4 border-t">
 								<Link 
-									href="/events?origin=allevents" 
+									href="/events" 
 									className="block px-4 py-3 rounded-lg active:bg-muted text-sm transition-colors bg-primary hover:bg-primary/90 text-white"
 									onClick={() => setMobileMenuOpen(false)}
 								>
@@ -1079,7 +1079,7 @@ export function SiteHeader() {
 							</NavigationMenuItem>
 
 							<NavigationMenuItem>
-								<Link href="/events?origin=allevents" className={`px-2 py-1 rounded-md hover:bg-accent text-sm ${pathname === "/events" ? "bg-accent" : ""}`}>All events</Link>
+								<Link href="/events" className={`px-2 py-1 rounded-md hover:bg-accent text-sm ${pathname === "/events" ? "bg-accent" : ""}`}>All events</Link>
 							</NavigationMenuItem>
 							</NavigationMenuList>
 						</NavigationMenu>

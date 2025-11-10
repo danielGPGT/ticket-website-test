@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -15,7 +15,6 @@ import {
 } from "lucide-react";
 import { CountryFlag } from "@/components/country-flag";
 import { getCountryName } from "@/lib/country-flags";
-import { useDebounce } from "@/hooks/use-debounce";
 import type { FilterState } from "@/hooks/use-filters";
 
 type FilterOption = {
@@ -26,7 +25,7 @@ type FilterOption = {
 
 type FacetData = {
 	sports?: Record<string, number>;
-	tournaments?: Array<{ id: string; name: string; count: number }>;
+	tournaments?: Array<{ id: string; name: string; season?: string; count: number }>;
 	countries?: Record<string, number>;
 	cities?: Record<string, number>;
 	venues?: Record<string, number>;
@@ -136,7 +135,35 @@ export function EventsFilters({ onFilterChange, initialFilters = {}, facets, eve
 
 	// Local search query state (for debouncing)
 	const [searchQuery, setSearchQuery] = useState(filters.query || "");
-	const debouncedSearchQuery = useDebounce(searchQuery, 500);
+	const externalQuery = typeof initialFilters.query === "string" ? initialFilters.query : "";
+	const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+	// Keep local query state in sync with external filter changes (e.g. mobile search bar)
+	useEffect(() => {
+		if (searchDebounceRef.current) {
+			clearTimeout(searchDebounceRef.current);
+			searchDebounceRef.current = null;
+		}
+
+		setFilters((prev) => {
+			if (prev.query === externalQuery) {
+				return prev;
+			}
+			return { ...prev, query: externalQuery };
+		});
+
+		setSearchQuery((prev) => (prev === externalQuery ? prev : externalQuery));
+		// externalQuery changes when URL/search params change
+	}, [externalQuery]);
+
+	// Cleanup pending search updates on unmount
+	useEffect(() => {
+		return () => {
+			if (searchDebounceRef.current) {
+				clearTimeout(searchDebounceRef.current);
+			}
+		};
+	}, []);
 
 	// Price range state
 	const [priceRange, setPriceRange] = useState<[number, number]>([
@@ -194,8 +221,8 @@ export function EventsFilters({ onFilterChange, initialFilters = {}, facets, eve
 		const buildTournaments = () => {
 			if (facetTournaments && facetTournaments.length > 0) {
 				return facetTournaments
-					.map((t) => ({ value: t.id, label: t.name, count: t.count }))
-					.sort((a, b) => b.count! - a.count! || a.label.localeCompare(b.label));
+					.map((t) => ({ value: t.id, label: t.season ? `${t.name} (${t.season})` : t.name, count: t.count }))
+					.sort((a, b) => a.label.localeCompare(b.label));
 			}
 
 			const map = new Map<string, { name: string; season?: string; count: number }>();
@@ -203,16 +230,22 @@ export function EventsFilters({ onFilterChange, initialFilters = {}, facets, eve
 				const tournamentId = String(e.tournament_id ?? "").trim();
 				if (!tournamentId) return;
 				const tournamentName = String(e.tournament_name ?? e.tournament ?? "").trim();
-				const season = e.season ? String(e.season) : "";
+				let season = e.season ? String(e.season) : "";
+				if (!season && e.date_start) {
+					const date = new Date(e.date_start);
+					if (!Number.isNaN(date.getTime())) {
+						season = String(date.getFullYear());
+					}
+				}
 				const entry = map.get(tournamentId) ?? { name: tournamentName || tournamentId, season, count: 0 };
 				entry.count += 1;
 				if (tournamentName) entry.name = tournamentName;
-				if (season) entry.season = season;
+				if (season && !entry.season) entry.season = season;
 				map.set(tournamentId, entry);
 			});
 			return Array.from(map.entries())
 				.map(([id, data]) => ({ value: id, label: data.season ? `${data.name} (${data.season})` : data.name, count: data.count }))
-				.sort((a, b) => b.count! - a.count! || a.label.localeCompare(b.label));
+				.sort((a, b) => a.label.localeCompare(b.label));
 		};
 
 		const buildCountries = () => {
@@ -316,6 +349,20 @@ export function EventsFilters({ onFilterChange, initialFilters = {}, facets, eve
 		});
 	}, [onFilterChange]);
 
+	const scheduleQueryUpdate = useCallback((value: string) => {
+		const normalized = value.trim();
+		if (normalized === (filters.query || "")) {
+			return;
+		}
+
+		if (searchDebounceRef.current) {
+			clearTimeout(searchDebounceRef.current);
+		}
+		searchDebounceRef.current = setTimeout(() => {
+			updateFilter("query", normalized);
+		}, 500);
+	}, [filters.query, updateFilter]);
+
 	const toggleFilterArray = useCallback((key: "sportType" | "tournamentId" | "countryCode" | "city" | "venue" | "eventStatus", value: string) => {
 		setFilters((prev) => {
 			const current = prev[key] || [];
@@ -335,6 +382,11 @@ export function EventsFilters({ onFilterChange, initialFilters = {}, facets, eve
 	}, [onFilterChange]);
 
 	const clearFilters = () => {
+		if (searchDebounceRef.current) {
+			clearTimeout(searchDebounceRef.current);
+			searchDebounceRef.current = null;
+		}
+
 		const [facetMin, facetMax] = priceRangeFromFacets;
 		const cleared: FilterState = {
 			sportType: [],
@@ -450,7 +502,11 @@ export function EventsFilters({ onFilterChange, initialFilters = {}, facets, eve
 							id="search"
 							placeholder="Search by name, venue..."
 							value={searchQuery}
-							onChange={(e) => setSearchQuery(e.target.value)}
+							onChange={(e) => {
+								const value = e.target.value;
+								setSearchQuery(value);
+								scheduleQueryUpdate(value);
+							}}
 							className="w-full"
 						/>
 					</div>
@@ -517,6 +573,7 @@ export function EventsFilters({ onFilterChange, initialFilters = {}, facets, eve
 							title="Sport"
 							isExpanded={expandedSections.sport}
 						>
+						<div className="max-h-40 overflow-y-auto overflow-x-hidden">
 							{loading.sports ? (
 								<div className="text-sm text-muted-foreground py-2">Loading...</div>
 							) : sports.length === 0 ? (
@@ -538,6 +595,7 @@ export function EventsFilters({ onFilterChange, initialFilters = {}, facets, eve
 									</label>
 								))
 							)}
+							</div>
 						</FilterSection>
 					)}
 
@@ -548,6 +606,7 @@ export function EventsFilters({ onFilterChange, initialFilters = {}, facets, eve
 						title="Country"
 						isExpanded={expandedSections.country}
 					>
+						<div className="max-h-40 overflow-y-auto overflow-x-hidden">
 						{loading.countries ? (
 							<div className="text-sm text-muted-foreground py-2">Loading...</div>
 						) : countries.length === 0 ? (
@@ -572,6 +631,7 @@ export function EventsFilters({ onFilterChange, initialFilters = {}, facets, eve
 								</label>
 							))
 						)}
+					</div>
 					</FilterSection>
 
 					{/* City */}
@@ -581,6 +641,7 @@ export function EventsFilters({ onFilterChange, initialFilters = {}, facets, eve
 						title="City"
 						isExpanded={expandedSections.city}
 					>
+						<div className="max-h-40 overflow-y-auto overflow-x-hidden">
 						{loading.cities ? (
 							<div className="text-sm text-muted-foreground py-2">Loading...</div>
 						) : cities.length === 0 ? (
@@ -612,6 +673,7 @@ export function EventsFilters({ onFilterChange, initialFilters = {}, facets, eve
 								)}
 							</>
 						)}
+						</div>
 					</FilterSection>
 
 					{/* Competition (Tournaments) */}
@@ -621,6 +683,7 @@ export function EventsFilters({ onFilterChange, initialFilters = {}, facets, eve
 						title="Competition"
 						isExpanded={expandedSections.competition}
 					>
+						<div className="max-h-40 overflow-y-auto overflow-x-hidden">
 						{loading.tournaments ? (
 							<div className="text-sm text-muted-foreground py-2">Loading...</div>
 						) : tournaments.length === 0 ? (
@@ -644,6 +707,7 @@ export function EventsFilters({ onFilterChange, initialFilters = {}, facets, eve
 								</label>
 							))
 						)}
+						</div>
 					</FilterSection>
 
 					{/* Venue */}
@@ -653,6 +717,7 @@ export function EventsFilters({ onFilterChange, initialFilters = {}, facets, eve
 						title="Venue"
 						isExpanded={expandedSections.venue}
 					>
+						<div className="max-h-40 overflow-y-auto overflow-x-hidden">
 						{loading.venues ? (
 							<div className="text-sm text-muted-foreground py-2">Loading...</div>
 						) : venues.length === 0 ? (
@@ -684,6 +749,7 @@ export function EventsFilters({ onFilterChange, initialFilters = {}, facets, eve
 								)}
 							</>
 						)}
+						</div>
 					</FilterSection>
 
 					{/* Price */}

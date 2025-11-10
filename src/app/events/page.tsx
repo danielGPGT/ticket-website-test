@@ -6,7 +6,7 @@ import { SectionHeader } from "@/components/section-header";
 import { EventsListSkeleton } from "@/components/events/event-card-skeleton";
 import { Input } from "@/components/ui/input";
 import { Search } from "lucide-react";
-import { useFilters } from "@/hooks/use-filters";
+import { FiltersProvider, useFilters } from "@/hooks/use-filters";
 import { useDebounce } from "@/hooks/use-debounce";
 
 function EventsExplorerWithSuspense({ overrideQuery = "" }: { overrideQuery?: string }) {
@@ -48,17 +48,21 @@ function MobileSearchBar() {
 export default function EventsPage() {
 	const [mobileQuery, setMobileQuery] = useState("");
 	return (
-		<div className="container mx-auto px-4 py-8 lg:py-12 overflow-x-hidden">
-			<SectionHeader
-				title="Browse Events"
-				subtitle="Discover tickets for your favorite sports and events"
-				className="mb-8"
-			/>
-			<Suspense fallback={null}>
-				<MobileSearchBarControlled value={mobileQuery} onChange={setMobileQuery} />
-			</Suspense>
-			<EventsExplorerWithSuspense overrideQuery={mobileQuery} />
-		</div>
+		<Suspense fallback={<EventsListSkeleton count={6} />}>
+			<FiltersProvider>
+				<div className="container mx-auto px-4 py-8 lg:py-12 overflow-x-hidden">
+					<SectionHeader
+						title="Browse Events"
+						subtitle="Discover tickets for your favorite sports and events"
+						className="mb-8"
+					/>
+					<Suspense fallback={null}>
+						<MobileSearchBarControlled value={mobileQuery} onChange={setMobileQuery} />
+					</Suspense>
+					<EventsExplorerWithSuspense overrideQuery={mobileQuery} />
+				</div>
+			</FiltersProvider>
+		</Suspense>
 	);
 }
 
@@ -68,7 +72,7 @@ function MobileSearchBarControlled({ value, onChange }: { value: string; onChang
 	const debounced = useDebounce(value, 500);
 	const { updateFilters } = useFilters();
 	useEffect(() => {
-		// Keep URL in sync when paused typing (only when non-empty to avoid flicker)
+		// Push debounced value into the shared filters store
 		updateFilters({ query: debounced });
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [debounced]);

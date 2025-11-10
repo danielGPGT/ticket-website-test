@@ -6,7 +6,7 @@ import { SectionHeader } from "@/components/section-header";
 import { Loader2, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { useDebounce } from "@/hooks/use-debounce";
-import { useFilters } from "@/hooks/use-filters";
+import { FiltersProvider, useFilters } from "@/hooks/use-filters";
 
 type SportEventsLayoutProps = {
 	sportType: string;
@@ -19,7 +19,7 @@ function MobileSearchBarControlled({ value, onChange }: { value: string; onChang
 	const debounced = useDebounce(value, 500);
 	const { updateFilters } = useFilters();
 	useEffect(() => {
-		// Keep URL in sync when paused typing (only when non-empty to avoid flicker)
+		// Push debounced value into the shared filters store
 		updateFilters({ query: debounced });
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [debounced]);
@@ -67,7 +67,9 @@ export function SportEventsLayout({ sportType, sportName, description }: SportEv
 				<Loader2 className="w-8 h-8 animate-spin text-primary" />
 			</div>
 		}>
-			<SportEventsContent sportType={sportType} sportName={sportName} description={description} />
+			<FiltersProvider>
+				<SportEventsContent sportType={sportType} sportName={sportName} description={description} />
+			</FiltersProvider>
 		</Suspense>
 	);
 }

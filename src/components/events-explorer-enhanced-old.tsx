@@ -538,7 +538,7 @@ export function EventsExplorerEnhanced() {
 								</Button>
 								<Button
 									variant="default"
-									onClick={() => router.push("/events?origin=allevents")}
+									onClick={() => router.push("/events")}
 								>
 									Show all events
 								</Button>

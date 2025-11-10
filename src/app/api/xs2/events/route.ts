@@ -336,7 +336,7 @@ async function fetchEventsFromDB(
 	let facets: Record<string, any> | null = null;
 
 	if (includeFacets) {
-		const facetFields = "event_id,sport_type,tournament_id,tournament_name,iso_country,city,venue_name,event_status,number_of_tickets,min_ticket_price_eur,date_start,date_stop";
+		const facetFields = "event_id,sport_type,tournament_id,tournament_name,season,iso_country,city,venue_name,event_status,number_of_tickets,min_ticket_price_eur,date_start,date_stop";
 		const facetBatchSize = 1000;
 		const maxFacetBatches = 100;
 		const aggregatedRows: any[] = [];
@@ -370,7 +370,7 @@ async function fetchEventsFromDB(
 			const countryCount: Record<string, number> = {};
 			const cityCount: Record<string, number> = {};
 			const venueCount: Record<string, number> = {};
-			const tournamentCount: Record<string, { id: string; name: string; count: number }> = {};
+			const tournamentMap = new Map<string, { id: string; name: string; season?: string; count: number }>();
 			const statusCount: Record<string, number> = {};
 			const priceRanges = {
 				"0-99": 0,
@@ -395,11 +395,19 @@ async function fetchEventsFromDB(
 
 				const tId = String(item.tournament_id ?? "").trim();
 				const tName = String(item.tournament_name ?? "").trim();
+				let tSeason = item.season ? String(item.season) : "";
+				if (!tSeason && item.date_start) {
+					const date = new Date(item.date_start);
+					if (!Number.isNaN(date.getTime())) {
+						tSeason = String(date.getFullYear());
+					}
+				}
 				if (tId) {
-					const entry = tournamentCount[tId] ?? { id: tId, name: tName || tId, count: 0 };
+					const entry = tournamentMap.get(tId) ?? { id: tId, name: tName || tId, season: tSeason || undefined, count: 0 };
 					entry.count += 1;
 					if (tName) entry.name = tName;
-					tournamentCount[tId] = entry;
+					if (tSeason) entry.season = tSeason;
+					tournamentMap.set(tId, entry);
 				}
 
 				const rawStatus = String(item.event_status ?? "").toLowerCase();
@@ -425,12 +433,43 @@ async function fetchEventsFromDB(
 				}
 			});
 
+			const tournamentIdsForDetails = Array.from(tournamentMap.keys());
+			if (tournamentIdsForDetails.length > 0) {
+				const detailChunkSize = 100;
+				for (let i = 0; i < tournamentIdsForDetails.length; i += detailChunkSize) {
+					const chunk = tournamentIdsForDetails.slice(i, i + detailChunkSize);
+					const { data: details } = await supabase
+						.from("tournaments")
+						.select("tournament_id,official_name,season")
+						.in("tournament_id", chunk);
+					if (details) {
+						details.forEach((detail: any) => {
+							const entry = tournamentMap.get(String(detail.tournament_id ?? ""));
+							if (!entry) return;
+							if (detail.official_name) {
+								entry.name = String(detail.official_name);
+							}
+							let season = detail.season ? String(detail.season) : "";
+							if (!season && entry.season) {
+								season = entry.season;
+							}
+							entry.season = season || undefined;
+							const updated = tournamentMap.get(entry.id);
+							if (updated) {
+								updated.name = entry.name;
+								updated.season = entry.season;
+							}
+						});
+					}
+				}
+			}
+
 			facets = {
 				sports: sportsCount,
 				countries: countryCount,
 				cities: cityCount,
 				venues: venueCount,
-				tournaments: Object.values(tournamentCount),
+				tournaments: Array.from(tournamentMap.values()),
 				statuses: statusCount,
 				price_ranges: priceRanges,
 			};

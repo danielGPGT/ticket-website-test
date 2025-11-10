@@ -314,9 +314,9 @@ export function EventCardHorizontal({
 						</div>
 
 						{/* Right Section - Price & Action */}
-						<div className="relative sm:w-56 lg:w-60 px-4 sm:px-5 lg:px-6 py-4 sm:py-5 border-t sm:border-t-0 sm:border-l border-border/30 flex flex-row sm:flex-col justify-between sm:justify-center items-center sm:items-center gap-3 sm:gap-3 bg-transparent sm:bg-transparent">
+						<div className="relative sm:w-56 lg:w-60 px-4 sm:px-5 lg:px-6 py-4 sm:py-5  flex flex-row sm:flex-col justify-between sm:justify-center items-center sm:items-center gap-3 sm:gap-3 bg-transparent sm:bg-transparent">
 							{/* Dashed separator - hidden on mobile, shown on desktop */}
-							<div className="hidden sm:block absolute left-0 top-0 bottom-0 w-px border-l-2 my-4 border-dashed border-border/50" />
+							<div className="absolute left-0 -top-4 right-0 sm:top-0 bottom-0 border-t-2 sm:border-t-0 sm:border-l-2 mx-4 sm:mx-0 my-4 border-dashed border-border" />
 							<div className="flex flex-col items-start sm:items-center w-full space-y-2 sm:space-y-2">
 								{/* Price Row - only show if in stock or not confirmed */}
 								{(isAvailable || isNotConfirmed) && (

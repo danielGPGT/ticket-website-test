@@ -128,7 +128,6 @@ export function VirtualEventsList({ events, loading, filters, height = 800, spor
 						countryCode={countryCode}
 						sportType={e.sport_type}
 						tournamentName={e.tournament_name}
-									tournamentSeason={e.season}
 						tournamentSeason={e.season}
 						city={e.city}
 						minPrice={e.min_ticket_price_eur}

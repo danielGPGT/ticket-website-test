@@ -511,7 +511,7 @@ export function EventsExplorerEnhanced() {
 			<div className="flex flex-col lg:flex-row gap-6">
 				{/* Filters Sidebar - Hidden on mobile, visible on desktop */}
 				<aside className="hidden lg:block w-80 shrink-0">
-					<EventsFilters onFilterChange={handleFilterChange} initialFilters={filters} events={allEvents} />
+					<EventsFilters onFilterChange={handleFilterChange} initialFilters={filters} facets={null} />
 				</aside>
 
 				{/* Events Grid */}
@@ -710,9 +710,9 @@ export function EventsExplorerEnhanced() {
 						)}
 					</Button>
 				</DrawerTrigger>
-				<DrawerContent className="!max-h-[90vh] p-0 bg-card">
+				<DrawerContent className="max-h-[90vh] p-0 bg-card">
 					<div className="overflow-y-auto">
-						<EventsFilters onFilterChange={handleFilterChange} initialFilters={filters} events={allEvents} isMobile={true} />
+						<EventsFilters onFilterChange={handleFilterChange} initialFilters={filters} facets={null} isMobile={true} />
 					</div>
 				</DrawerContent>
 			</Drawer>

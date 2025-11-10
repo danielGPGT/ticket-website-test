@@ -14,6 +14,7 @@ import {
 	Globe, Building2, Trophy, Landmark, ChevronDown, ChevronUp, Activity, Star, Flame, CircleDot
 } from "lucide-react";
 import { CountryFlag } from "@/components/country-flag";
+import { getCountryName } from "@/lib/country-flags";
 import { useDebounce } from "@/hooks/use-debounce";
 import type { FilterState } from "@/hooks/use-filters";
 
@@ -23,10 +24,21 @@ type FilterOption = {
 	count?: number;
 };
 
+type FacetData = {
+	sports?: Record<string, number>;
+	tournaments?: Array<{ id: string; name: string; count: number }>;
+	countries?: Record<string, number>;
+	cities?: Record<string, number>;
+	venues?: Record<string, number>;
+	statuses?: Record<string, number>;
+	price_ranges?: Record<string, number>;
+};
+
 type EventsFiltersProps = {
 	onFilterChange: (filters: FilterState) => void;
 	initialFilters?: Partial<FilterState>;
-	events?: any[]; // Current events for dynamic counts
+	facets?: FacetData | null;
+	events?: any[];
 	isMobile?: boolean; // If true, remove border and shadow for mobile drawer
 	hiddenFilters?: string[]; // Array of filter IDs to hide (e.g., ["sport"])
 };
@@ -56,7 +68,23 @@ function formatSportType(sportType: string): string {
 	return sportType.replace(/_/g, " ").replace(/\b\w/g, (char) => char.toUpperCase());
 }
 
-export function EventsFilters({ onFilterChange, initialFilters = {}, events = [], isMobile = false, hiddenFilters = [] }: EventsFiltersProps) {
+function formatStatusLabel(status: string): string {
+	const map: Record<string, string> = {
+		on_sale: "On Sale",
+		coming_soon: "Coming Soon",
+		sales_closed: "Sales Closed",
+		not_confirmed: "Not Confirmed",
+	};
+
+	const key = status.toLowerCase();
+	if (map[key]) {
+		return map[key];
+	}
+
+	return status.replace(/_/g, " ").replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
+export function EventsFilters({ onFilterChange, initialFilters = {}, facets, events = [], isMobile = false, hiddenFilters = [] }: EventsFiltersProps) {
 	// Expandable sections state - expand key sections by default
 	const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
 		popularEvents: false,
@@ -116,276 +144,168 @@ export function EventsFilters({ onFilterChange, initialFilters = {}, events = []
 		filters.priceMax || 10000,
 	]);
 
-	// Sync filters when initialFilters change
-	useEffect(() => {
-		setFilters({
-			sportType: Array.isArray(initialFilters.sportType) ? initialFilters.sportType : (initialFilters.sportType ? [initialFilters.sportType] : []),
-			tournamentId: Array.isArray(initialFilters.tournamentId) ? initialFilters.tournamentId : (initialFilters.tournamentId ? [initialFilters.tournamentId] : []),
-			countryCode: Array.isArray(initialFilters.countryCode) ? initialFilters.countryCode : (initialFilters.countryCode ? [initialFilters.countryCode] : []),
-			city: Array.isArray(initialFilters.city) ? initialFilters.city : (initialFilters.city ? [initialFilters.city] : []),
-			venue: Array.isArray(initialFilters.venue) ? initialFilters.venue : (initialFilters.venue ? [initialFilters.venue] : []),
-			dateFrom: initialFilters.dateFrom || "",
-			dateTo: initialFilters.dateTo || "",
-			priceMin: initialFilters.priceMin ?? 0,
-			priceMax: initialFilters.priceMax ?? 10000,
-			query: initialFilters.query || "",
-			popularEvents: initialFilters.popularEvents ?? false,
-			eventStatus: Array.isArray(initialFilters.eventStatus) ? initialFilters.eventStatus : (initialFilters.eventStatus ? [initialFilters.eventStatus] : []),
-		});
-		// Don't sync searchQuery on mobile - mobile search bar handles it independently
-		if (!isMobile) {
-			setSearchQuery(initialFilters.query || "");
-		}
-		setPriceRange([
-			initialFilters.priceMin ?? 0,
-			initialFilters.priceMax ?? 10000,
-		]);
-	}, [initialFilters, isMobile]);
+	const priceRangeFromFacets = useMemo(() => {
+		const buckets = facets?.price_ranges;
+		const orderedBuckets = [
+			{ key: "0-99", min: 0, max: 99 },
+			{ key: "100-199", min: 100, max: 199 },
+			{ key: "200-499", min: 200, max: 499 },
+			{ key: "500-999", min: 500, max: 999 },
+			{ key: "1000+", min: 1000, max: 10000 },
+		];
 
-	// Sync debounced search query (skip on mobile since mobile search bar handles it)
+		if (!buckets) {
+			return [0, 10000] as [number, number];
+		}
+
+		const active = orderedBuckets.filter((bucket) => (buckets[bucket.key] ?? 0) > 0);
+		if (active.length === 0) {
+			return [0, 10000] as [number, number];
+		}
+
+		const min = active[0].min;
+		const max = active[active.length - 1].max;
+		return [min, max] as [number, number];
+	}, [facets]);
+
 	useEffect(() => {
-		if (!isMobile && debouncedSearchQuery !== filters.query) {
-			console.log("[EventsFilters] Search query changed:", debouncedSearchQuery);
-			setFilters((prev) => {
-				const newFilters = { ...prev, query: debouncedSearchQuery };
-				onFilterChange(newFilters);
-				return newFilters;
+		const { sports: facetSports, tournaments: facetTournaments, countries: facetCountries, cities: facetCities, venues: facetVenues, statuses: facetStatuses, price_ranges: facetPriceRanges } = facets ?? {};
+
+		const fallbackEvents = (!facets || events.length > 0) ? events : [];
+
+		const buildSports = () => {
+			if (facetSports && Object.keys(facetSports).length > 0) {
+				return Object.entries(facetSports)
+					.map(([key, count]) => ({ value: key, label: formatSportType(key), count }))
+					.sort((a, b) => a.label.localeCompare(b.label));
+			}
+
+			const map = new Map<string, number>();
+			fallbackEvents.forEach((e: any) => {
+				const sportType = String(e.sport_type ?? "").trim().toLowerCase();
+				if (!sportType) return;
+				map.set(sportType, (map.get(sportType) ?? 0) + 1);
 			});
-		}
-	}, [debouncedSearchQuery, filters.query, onFilterChange, isMobile]);
+			return Array.from(map.entries())
+				.map(([sportType, count]) => ({ value: sportType, label: formatSportType(sportType), count }))
+				.sort((a, b) => a.label.localeCompare(b.label));
+		};
 
-	// Load sports from events (no API call needed)
-	useEffect(() => {
-		if (events.length === 0) {
-			setSports([]);
-			return;
-		}
-		
-		setLoading(prev => ({ ...prev, sports: true }));
-		
-		// Extract unique sports from events
-		const sportMap = new Map<string, number>();
-		
-		events.forEach((e: any) => {
-			const sportType = String(e.sport_type ?? "").trim().toLowerCase();
-			if (!sportType) return;
-			
-			sportMap.set(sportType, (sportMap.get(sportType) || 0) + 1);
-		});
-		
-		// Convert to array with formatted names
-		const list: FilterOption[] = Array.from(sportMap.entries()).map(([sportType, count]) => ({
-			value: sportType,
-			label: formatSportType(sportType),
-			count: count
-		}));
-		
-		// Sort alphabetically
-		list.sort((a, b) => a.label.localeCompare(b.label));
-		
-		console.log("[EventsFilters] Extracted", list.length, "sports from events:", list.map(s => s.label));
-		setSports(list);
-		setLoading(prev => ({ ...prev, sports: false }));
-	}, [events]);
+		const buildTournaments = () => {
+			if (facetTournaments && facetTournaments.length > 0) {
+				return facetTournaments
+					.map((t) => ({ value: t.id, label: t.name, count: t.count }))
+					.sort((a, b) => b.count! - a.count! || a.label.localeCompare(b.label));
+			}
 
-	// Load tournaments from events (no sport selection required)
-	useEffect(() => {
-		if (events.length === 0) {
-			setTournaments([]);
-			return;
-		}
-		
-		setLoading(prev => ({ ...prev, tournaments: true }));
-		
-		// Extract unique tournaments from events
-		const tournamentMap = new Map<string, { name: string; season: string; count: number }>();
-		
-		events.forEach((e: any) => {
-			const tournamentId = String(e.tournament_id ?? "").trim();
-			if (!tournamentId) return;
-			
-			const tournamentName = String(e.tournament_name ?? e.tournament ?? "").trim();
-			const season = e.season ? String(e.season) : "";
-			
-			if (tournamentMap.has(tournamentId)) {
-				const existing = tournamentMap.get(tournamentId)!;
-				existing.count++;
-				// Update name if we have a better one
-				if (tournamentName && !existing.name) {
-					existing.name = tournamentName;
+			const map = new Map<string, { name: string; season?: string; count: number }>();
+			fallbackEvents.forEach((e: any) => {
+				const tournamentId = String(e.tournament_id ?? "").trim();
+				if (!tournamentId) return;
+				const tournamentName = String(e.tournament_name ?? e.tournament ?? "").trim();
+				const season = e.season ? String(e.season) : "";
+				const entry = map.get(tournamentId) ?? { name: tournamentName || tournamentId, season, count: 0 };
+				entry.count += 1;
+				if (tournamentName) entry.name = tournamentName;
+				if (season) entry.season = season;
+				map.set(tournamentId, entry);
+			});
+			return Array.from(map.entries())
+				.map(([id, data]) => ({ value: id, label: data.season ? `${data.name} (${data.season})` : data.name, count: data.count }))
+				.sort((a, b) => b.count! - a.count! || a.label.localeCompare(b.label));
+		};
+
+		const buildCountries = () => {
+			if (facetCountries && Object.keys(facetCountries).length > 0) {
+				return Object.entries(facetCountries)
+					.map(([code, count]) => ({ value: code, label: getCountryName(code) || code, count }))
+					.sort((a, b) => b.count! - a.count!);
+			}
+
+			const map = new Map<string, number>();
+			fallbackEvents.forEach((e: any) => {
+				const code = String(e.iso_country ?? e.country ?? "").trim().toUpperCase();
+				if (!code) return;
+				map.set(code, (map.get(code) ?? 0) + 1);
+			});
+			return Array.from(map.entries())
+				.map(([code, count]) => ({ value: code, label: getCountryName(code) || code, count }))
+				.sort((a, b) => b.count! - a.count!);
+		};
+
+		const buildCities = () => {
+			if (facetCities && Object.keys(facetCities).length > 0) {
+				return Object.entries(facetCities)
+					.map(([city, count]) => ({ value: city, label: city, count }))
+					.sort((a, b) => b.count! - a.count!);
+			}
+
+			const map = new Map<string, number>();
+			fallbackEvents.forEach((e: any) => {
+				const city = String(e.city ?? "").trim();
+				if (!city) return;
+				map.set(city, (map.get(city) ?? 0) + 1);
+			});
+			return Array.from(map.entries())
+				.map(([city, count]) => ({ value: city, label: city, count }))
+				.sort((a, b) => b.count! - a.count!);
+		};
+
+		const buildVenues = () => {
+			if (facetVenues && Object.keys(facetVenues).length > 0) {
+				return Object.entries(facetVenues)
+					.map(([venue, count]) => ({ value: venue, label: venue, count }))
+					.sort((a, b) => b.count! - a.count!);
+			}
+
+			const map = new Map<string, number>();
+			fallbackEvents.forEach((e: any) => {
+				const venue = String(e.venue_name ?? e.venue ?? "").trim();
+				if (!venue) return;
+				map.set(venue, (map.get(venue) ?? 0) + 1);
+			});
+			return Array.from(map.entries())
+				.map(([venue, count]) => ({ value: venue, label: venue, count }))
+				.sort((a, b) => b.count! - a.count!);
+		};
+
+		const buildStatuses = () => {
+			if (facetStatuses && Object.keys(facetStatuses).length > 0) {
+				return Object.entries(facetStatuses)
+					.map(([status, count]) => ({ value: status, label: formatStatusLabel(status), count }))
+					.sort((a, b) => b.count! - a.count!);
+			}
+
+			const map = new Map<string, number>();
+			fallbackEvents.forEach((e: any) => {
+				const rawStatus = String(e.event_status ?? "").trim().toLowerCase();
+				const numberOfTickets = Number(e.number_of_tickets ?? 0);
+				let derivedStatus = "coming_soon";
+				if (rawStatus === "soldout" || rawStatus === "closed") {
+					derivedStatus = "sales_closed";
+				} else if (rawStatus === "cancelled" || rawStatus === "postponed") {
+					derivedStatus = "not_confirmed";
+				} else if (numberOfTickets > 0) {
+					derivedStatus = "on_sale";
 				}
-				// Update season if we have a better one
-				if (season && !existing.season) {
-					existing.season = season;
-				}
-			} else {
-				tournamentMap.set(tournamentId, {
-					name: tournamentName || tournamentId,
-					season: season,
-					count: 1
-				});
-			}
-		});
-		
-		// Convert to array
-		const list: FilterOption[] = Array.from(tournamentMap.entries()).map(([id, data]) => ({
-			value: id,
-			label: `${data.name}${data.season ? ` (${data.season})` : ""}`,
-			count: data.count
-		}));
-		
-		// Sort by count (most events first), then by season (current first), then name
-		const currentYear = new Date().getFullYear();
-		list.sort((a, b) => {
-			// First sort by count (descending)
-			if (a.count !== b.count) {
-				return (b.count ?? 0) - (a.count ?? 0);
-			}
-			// Then by season (current first)
-			const aSeason = parseInt(a.label.match(/\((\d{4})/)?.[1] || "0");
-			const bSeason = parseInt(b.label.match(/\((\d{4})/)?.[1] || "0");
-			if (aSeason === currentYear && bSeason !== currentYear) return -1;
-			if (bSeason === currentYear && aSeason !== currentYear) return 1;
-			if (aSeason !== bSeason) return bSeason - aSeason;
-			// Finally by name
-			return a.label.localeCompare(b.label);
-		});
-		
-		console.log("[EventsFilters] Extracted", list.length, "tournaments from events");
-		setTournaments(list);
-		setLoading(prev => ({ ...prev, tournaments: false }));
-	}, [events]);
+				map.set(derivedStatus, (map.get(derivedStatus) ?? 0) + 1);
+			});
+			return Array.from(map.entries())
+				.map(([status, count]) => ({ value: status, label: formatStatusLabel(status), count }))
+				.sort((a, b) => b.count! - a.count!);
+		};
 
-	// Load countries, cities, and venues dynamically from events
-	useEffect(() => {
-		if (!events.length) {
-			// Load from API if no events
-			setLoading(prev => ({ ...prev, countries: true }));
-			fetch("/api/xs2/countries?page_size=300")
-				.then((r) => r.json())
-				.then((d) => {
-					const raw = (d.countries ?? d.results ?? []) as any[];
-					const seen = new Set<string>();
-					const list: FilterOption[] = [];
-					
-					raw.forEach((c) => {
-						const code = String(c.iso_country ?? c.country ?? c.iso3 ?? "").trim().toUpperCase();
-						if (!code || code.length < 2 || seen.has(code)) return;
-						seen.add(code);
-						
-						const name = String(c.name ?? c.country_name ?? code).trim();
-						if (!name) return;
-						
-						list.push({ value: code, label: name });
-					});
-					
-					setCountries(list.sort((a, b) => a.label.localeCompare(b.label)));
-				})
-				.finally(() => setLoading(prev => ({ ...prev, countries: false })));
-			return;
-		}
+		setSports(buildSports());
+		setTournaments(buildTournaments());
+		setCountries(buildCountries());
+		setCities(buildCities());
+		setVenues(buildVenues());
+		setEventStatuses(buildStatuses());
 
-		// Extract unique countries, cities, and venues from events
-		const countryMap = new Map<string, number>();
-		const cityMap = new Map<string, number>();
-		const venueMap = new Map<string, number>();
+		setLoading((prev) => ({ ...prev, sports: false, tournaments: false, countries: false, cities: false, venues: false }));
+	}, [facets, events]);
 
-		events.forEach((e: any) => {
-			const countryCode = String(e.iso_country ?? e.country ?? "").trim().toUpperCase();
-			if (countryCode && countryCode.length >= 2) {
-				countryMap.set(countryCode, (countryMap.get(countryCode) || 0) + 1);
-			}
-
-			const city = String(e.city ?? "").trim();
-			if (city) {
-				cityMap.set(city, (cityMap.get(city) || 0) + 1);
-			}
-
-			const venue = String(e.venue_name ?? e.venue ?? "").trim();
-			if (venue) {
-				venueMap.set(venue, (venueMap.get(venue) || 0) + 1);
-			}
-		});
-
-		// Convert to arrays
-		const countryList: FilterOption[] = Array.from(countryMap.entries())
-			.map(([code, count]) => ({
-				value: code,
-				label: code, // Will be replaced with country name lookup
-				count,
-			}))
-			.sort((a, b) => b.count! - a.count!);
-
-		const cityList: FilterOption[] = Array.from(cityMap.entries())
-			.map(([city, count]) => ({
-				value: city,
-				label: city,
-				count,
-			}))
-			.sort((a, b) => b.count! - a.count!);
-
-		const venueList: FilterOption[] = Array.from(venueMap.entries())
-			.map(([venue, count]) => ({
-				value: venue,
-				label: venue,
-				count,
-			}))
-			.sort((a, b) => b.count! - a.count!);
-
-		setCountries(countryList);
-		setCities(cityList);
-		setVenues(venueList);
-
-		// Calculate event status counts
-		const statusMap = new Map<string, number>();
-		
-		events.forEach((e: any) => {
-			const eventStatus = String(e.event_status ?? "").trim().toLowerCase();
-			const numberOfTickets = e.number_of_tickets ?? 0;
-			
-			// Determine actual status based on event_status and ticket availability
-			// Same logic as EventCardHorizontal
-			let actualStatus: string;
-			
-			if (eventStatus === "soldout" || eventStatus === "closed") {
-				actualStatus = "sales_closed";
-			} else if (eventStatus === "cancelled" || eventStatus === "postponed") {
-				actualStatus = "not_confirmed";
-			} else if (eventStatus === "notstarted" || eventStatus === "nosale") {
-				actualStatus = numberOfTickets > 0 ? "on_sale" : "coming_soon";
-			} else {
-				// Default: check if tickets available
-				actualStatus = numberOfTickets > 0 ? "on_sale" : "coming_soon";
-			}
-			
-			statusMap.set(actualStatus, (statusMap.get(actualStatus) || 0) + 1);
-		});
-
-		const statusList: FilterOption[] = [
-			{ value: "on_sale", label: "On Sale", count: statusMap.get("on_sale") || 0 },
-			{ value: "coming_soon", label: "Coming Soon", count: statusMap.get("coming_soon") || 0 },
-			{ value: "sales_closed", label: "Sales Closed", count: statusMap.get("sales_closed") || 0 },
-			{ value: "not_confirmed", label: "Not Confirmed", count: statusMap.get("not_confirmed") || 0 },
-		].filter(s => s.count > 0); // Only show statuses that have events
-
-		setEventStatuses(statusList);
-	}, [events]);
-
-	// Calculate price range from events
-	const priceRangeFromEvents = useMemo(() => {
-		if (!events.length) return [0, 10000];
-		
-		const prices = events
-			.map(e => e.min_ticket_price_eur ?? e.min_price_eur ?? 0)
-			.filter(p => p > 0)
-			.map(p => p > 1000 ? p / 100 : p); // Convert cents to euros if needed
-		
-		if (prices.length === 0) return [0, 10000];
-		
-		const min = Math.floor(Math.min(...prices));
-		const max = Math.ceil(Math.max(...prices));
-		return [min, max];
-	}, [events]);
+	// Legacy events-based filter extraction removed
 
 	// Update filters and notify parent
 	const updateFilter = useCallback((key: keyof FilterState, value: any) => {
@@ -415,6 +335,7 @@ export function EventsFilters({ onFilterChange, initialFilters = {}, events = []
 	}, [onFilterChange]);
 
 	const clearFilters = () => {
+		const [facetMin, facetMax] = priceRangeFromFacets;
 		const cleared: FilterState = {
 			sportType: [],
 			tournamentId: [],
@@ -424,16 +345,19 @@ export function EventsFilters({ onFilterChange, initialFilters = {}, events = []
 			dateFrom: "",
 			dateTo: "",
 			priceMin: 0,
-			priceMax: priceRangeFromEvents[1],
+			priceMax: 10000,
 			query: "",
 			popularEvents: false,
 			eventStatus: [],
 		};
 		setFilters(cleared);
 		setSearchQuery("");
-		setPriceRange([priceRangeFromEvents[0], priceRangeFromEvents[1]]);
+		setPriceRange([facetMin, facetMax]);
 		onFilterChange(cleared);
 	};
+
+	const defaultPriceMin = priceRangeFromFacets[0];
+	const defaultPriceMax = priceRangeFromFacets[1];
 
 	const activeFilterCount = 
 		filters.sportType.length +
@@ -443,7 +367,7 @@ export function EventsFilters({ onFilterChange, initialFilters = {}, events = []
 		filters.venue.length +
 		(filters.dateFrom ? 1 : 0) +
 		(filters.dateTo ? 1 : 0) +
-		(filters.priceMin > priceRangeFromEvents[0] || filters.priceMax < priceRangeFromEvents[1] ? 1 : 0) +
+		(filters.priceMin > defaultPriceMin || filters.priceMax < defaultPriceMax ? 1 : 0) +
 		(filters.query ? 1 : 0) +
 		(filters.popularEvents ? 1 : 0) +
 		filters.eventStatus.length;
@@ -701,7 +625,7 @@ export function EventsFilters({ onFilterChange, initialFilters = {}, events = []
 							<div className="text-sm text-muted-foreground py-2">Loading...</div>
 						) : tournaments.length === 0 ? (
 							<div className="text-sm text-muted-foreground py-2">
-								{events.length === 0 ? "No events loaded yet" : "No tournaments found in current events"}
+								No competitions available for the current filters
 							</div>
 						) : (
 							tournaments.map((t) => (
@@ -773,12 +697,17 @@ export function EventsFilters({ onFilterChange, initialFilters = {}, events = []
 							<Slider
 								value={priceRange}
 								onValueChange={(value) => {
-									setPriceRange(value as [number, number]);
-									updateFilter("priceMin", value[0]);
-									updateFilter("priceMax", value[1]);
+									const [facetMin, facetMax] = priceRangeFromFacets;
+									const clamped: [number, number] = [
+										Math.max(facetMin, Math.min(facetMax, value[0] ?? facetMin)),
+										Math.max(facetMin, Math.min(facetMax, value[1] ?? facetMax)),
+									];
+									setPriceRange(clamped);
+									updateFilter("priceMin", clamped[0]);
+									updateFilter("priceMax", clamped[1]);
 								}}
-								min={priceRangeFromEvents[0]}
-								max={priceRangeFromEvents[1]}
+								min={priceRangeFromFacets[0]}
+								max={priceRangeFromFacets[1]}
 								step={1}
 								className="w-full"
 							/>
@@ -792,13 +721,17 @@ export function EventsFilters({ onFilterChange, initialFilters = {}, events = []
 										type="number"
 										value={priceRange[0]}
 										onChange={(e) => {
-											const val = parseInt(e.target.value) || priceRangeFromEvents[0];
-											setPriceRange([val, priceRange[1]]);
+											const [facetMin, facetMax] = priceRangeFromFacets;
+											const raw = parseInt(e.target.value);
+											const val = Math.max(facetMin, Math.min(facetMax, Number.isNaN(raw) ? facetMin : raw));
+											const nextMax = Math.max(val, priceRange[1]);
+											setPriceRange([val, nextMax]);
 											updateFilter("priceMin", val);
+											updateFilter("priceMax", nextMax);
 										}}
 										className="w-full"
-										min={priceRangeFromEvents[0]}
-										max={priceRangeFromEvents[1]}
+										min={priceRangeFromFacets[0]}
+										max={priceRangeFromFacets[1]}
 										step={1}
 									/>
 								</div>
@@ -811,13 +744,17 @@ export function EventsFilters({ onFilterChange, initialFilters = {}, events = []
 										type="number"
 										value={priceRange[1]}
 										onChange={(e) => {
-											const val = parseInt(e.target.value) || priceRangeFromEvents[1];
-											setPriceRange([priceRange[0], val]);
+											const [facetMin, facetMax] = priceRangeFromFacets;
+											const raw = parseInt(e.target.value);
+											const val = Math.max(facetMin, Math.min(facetMax, Number.isNaN(raw) ? facetMax : raw));
+											const nextMin = Math.min(priceRange[0], val);
+											setPriceRange([nextMin, val]);
+											updateFilter("priceMin", nextMin);
 											updateFilter("priceMax", val);
 										}}
 										className="w-full"
-										min={priceRangeFromEvents[0]}
-										max={priceRangeFromEvents[1]}
+										min={priceRangeFromFacets[0]}
+										max={priceRangeFromFacets[1]}
 										step={1}
 									/>
 								</div>

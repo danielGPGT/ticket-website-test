@@ -105,72 +105,116 @@ async function fetchEventsFromDB(
 			});
 		}
 	}
-	
-	// Extract and apply filters
-	const sportType = searchParams.get("sport_type");
-	const tournamentId = searchParams.get("tournament_id");
+
+	const sportTypes = searchParams.getAll("sport_type").filter((value) => Boolean(value));
+	const tournamentIds = searchParams.getAll("tournament_id").filter((value) => Boolean(value));
 	const teamId = searchParams.get("team_id") || searchParams.get("team");
-	const country = searchParams.get("country");
-	const eventName = searchParams.get("event_name");
-	const queryText = searchParams.get("query");
-	const isPopular = searchParams.get("is_popular");
-	const dateStop = searchParams.get("date_stop");
-	const page = parseInt(searchParams.get("page") || searchParams.get("page_number") || "1");
-	const pageSize = parseInt(searchParams.get("page_size") || "50");
+	const countryCodes = searchParams.getAll("country").filter((value) => Boolean(value));
+	const cityFilters = searchParams.getAll("city").filter((value) => Boolean(value));
+	const venueFilters = searchParams.getAll("venue").filter((value) => Boolean(value));
+	const eventName = searchParams.get("event_name") || searchParams.get("query");
+	const isPopular = searchParams.get("is_popular") || searchParams.get("popular_events");
+	const dateStartFilter = searchParams.get("date_start");
+	const dateStopFilter = searchParams.get("date_stop");
+	const priceMin = searchParams.get("price_min");
+	const priceMax = searchParams.get("price_max");
+	const includePast = searchParams.get("include_past") === "true";
+	const page = parseInt(searchParams.get("page") || searchParams.get("page_number") || "1", 10);
+	const pageSize = parseInt(searchParams.get("page_size") || "50", 10);
 	const eventStatus = searchParams.get("event_status");
-	const excludeStatus = searchParams.get("exclude_status"); // comma-separated
+	const excludeStatus = searchParams.get("exclude_status");
+	const stockStatuses = searchParams.getAll("stock_status").filter((value) => Boolean(value)).map((s) => s.toLowerCase());
+	const includeFacets = searchParams.get("include_facets") === "true";
 	
+	const applyUpcomingConstraint = (builder: any) => {
+		const todayIso = today;
+		return builder.or(`date_stop.gte.${todayIso},and(date_stop.is.null,date_start.gte.${todayIso})`);
+	};
+
 	// Apply filters
-	if (sportType) {
-		query = query.eq("sport_type", sportType);
-	}
-	if (tournamentId) {
-		query = query.eq("tournament_id", tournamentId);
-	}
-	if (teamId) {
-		query = query.or(`hometeam_id.eq.${teamId},visiting_id.eq.${teamId}`);
-	}
-	if (country) {
-		query = query.eq("iso_country", country);
-	}
-	if (eventName) {
-		query = query.ilike("event_name", `%${eventName}%`);
-	}
-	if (queryText) {
-		// Text search on event_name
-		query = query.ilike("event_name", `%${queryText}%`);
-	}
-	if (isPopular === "true") {
-		// Strict: must be exactly true (not null, not false)
-		query = query.eq("is_popular", true);
-	}
-	if (eventStatus) {
-		// Use case-insensitive exact match for status
-		// ilike with exact string (no %) does case-insensitive exact match
-		query = query.ilike("event_status", eventStatus);
-	}
-	// Note: excludeStatus will be handled client-side after fetch for case-insensitive matching
-	
-	// Handle date_stop filter (with operators like "ge:", "gt:", etc.)
-	if (dateStop) {
-		const dateFilter = parseDateFilter(dateStop);
-		if (dateFilter) {
-			if (dateFilter.operator === "gte") {
-				query = query.gte("date_stop", dateFilter.value);
-			} else if (dateFilter.operator === "gt") {
-				query = query.gt("date_stop", dateFilter.value);
-			} else if (dateFilter.operator === "lte") {
-				query = query.lte("date_stop", dateFilter.value);
-			} else if (dateFilter.operator === "lt") {
-				query = query.lt("date_stop", dateFilter.value);
-			} else if (dateFilter.operator === "eq") {
-				query = query.eq("date_stop", dateFilter.value);
+	const applyFilters = (builder: any) => {
+		let scoped = builder;
+		if (sportTypes.length > 0) {
+			scoped = scoped.in("sport_type", sportTypes.map((s) => s.toLowerCase()));
+		}
+		if (tournamentIds.length > 0) {
+			scoped = scoped.in("tournament_id", tournamentIds);
+		}
+		if (teamId) {
+			scoped = scoped.or(`hometeam_id.eq.${teamId},visiting_id.eq.${teamId}`);
+		}
+		if (countryCodes.length > 0) {
+			scoped = scoped.in("iso_country", countryCodes.map((code) => code.toUpperCase()));
+		}
+		if (cityFilters.length > 0) {
+			scoped = scoped.in("city", cityFilters);
+		}
+		if (venueFilters.length > 0) {
+			scoped = scoped.in("venue_name", venueFilters);
+		}
+		if (eventName) {
+			const likeValue = `%${eventName}%`;
+			scoped = scoped.or(
+				`event_name.ilike.${likeValue},venue_name.ilike.${likeValue},city.ilike.${likeValue},tournament_name.ilike.${likeValue}`
+			);
+		}
+		if (isPopular === "true") {
+			scoped = scoped.eq("is_popular", true);
+		}
+		if (eventStatus) {
+			scoped = scoped.ilike("event_status", eventStatus);
+		}
+		if (priceMin) {
+			const minValue = Number(priceMin);
+			if (!Number.isNaN(minValue)) {
+				scoped = scoped.gte("min_ticket_price_eur", minValue);
 			}
 		}
-	} else if (origin !== "allevents" && sportType) {
-		// Default: only show future events if sport_type is provided and not showing all events
-		query = query.gte("date_stop", today);
-	}
+		if (priceMax) {
+			const maxValue = Number(priceMax);
+			if (!Number.isNaN(maxValue)) {
+				scoped = scoped.lte("min_ticket_price_eur", maxValue);
+			}
+		}
+		if (dateStartFilter) {
+			const dateFilter = parseDateFilter(dateStartFilter);
+			if (dateFilter) {
+				if (dateFilter.operator === "gte") {
+					scoped = scoped.gte("date_start", dateFilter.value);
+				} else if (dateFilter.operator === "gt") {
+					scoped = scoped.gt("date_start", dateFilter.value);
+				} else if (dateFilter.operator === "lte") {
+					scoped = scoped.lte("date_start", dateFilter.value);
+				} else if (dateFilter.operator === "lt") {
+					scoped = scoped.lt("date_start", dateFilter.value);
+				} else if (dateFilter.operator === "eq") {
+					scoped = scoped.eq("date_start", dateFilter.value);
+				}
+			}
+		}
+		if (dateStopFilter) {
+			const dateFilter = parseDateFilter(dateStopFilter);
+			if (dateFilter) {
+				if (dateFilter.operator === "gte") {
+					scoped = scoped.gte("date_stop", dateFilter.value);
+				} else if (dateFilter.operator === "gt") {
+					scoped = scoped.gt("date_stop", dateFilter.value);
+				} else if (dateFilter.operator === "lte") {
+					scoped = scoped.lte("date_stop", dateFilter.value);
+				} else if (dateFilter.operator === "lt") {
+					scoped = scoped.lt("date_stop", dateFilter.value);
+				} else if (dateFilter.operator === "eq") {
+					scoped = scoped.eq("date_stop", dateFilter.value);
+				}
+			}
+		} else if (!includePast) {
+			scoped = applyUpcomingConstraint(scoped);
+		}
+
+		return scoped;
+	};
+
+	query = applyFilters(query);
 	
 	// Order by date_start ascending (upcoming events first)
 	query = query.order("date_start", { ascending: true, nullsFirst: false });
@@ -192,10 +236,9 @@ async function fetchEventsFromDB(
 	
 	// Apply case-insensitive excludeStatus filter client-side
 	let filteredData = data || [];
-	
-	// Also apply strict client-side filtering for is_popular and event_status
-	// This ensures we catch any events that slipped through server-side filters
-	if (isPopular === "true" || eventStatus || excludeStatus) {
+
+	// Also apply strict client-side filtering for flags that cannot be expressed via Supabase filters
+	if (isPopular === "true" || eventStatus || excludeStatus || stockStatuses.length > 0) {
 		const beforeCount = filteredData.length;
 		filteredData = filteredData.filter((item: any) => {
 			// Strict is_popular check
@@ -218,9 +261,30 @@ async function fetchEventsFromDB(
 					return false;
 				}
 			}
+
+			if (stockStatuses.length > 0) {
+				const itemStatus = String(item.event_status || "").toLowerCase().trim();
+				const numberOfTickets = Number(item.number_of_tickets ?? 0);
+
+				let derivedStatus = "coming_soon";
+				if (itemStatus === "soldout" || itemStatus === "closed") {
+					derivedStatus = "sales_closed";
+				} else if (itemStatus === "cancelled" || itemStatus === "postponed") {
+					derivedStatus = "not_confirmed";
+				} else if (numberOfTickets > 0) {
+					derivedStatus = "on_sale";
+				} else {
+					derivedStatus = "coming_soon";
+				}
+
+				if (!stockStatuses.includes(derivedStatus)) {
+					return false;
+				}
+			}
+
 			return true;
 		});
-		
+
 		if (process.env.NODE_ENV === "development") {
 			const excludedCount = beforeCount - filteredData.length;
 			if (excludedCount > 0) {
@@ -254,48 +318,138 @@ async function fetchEventsFromDB(
 	
 	// Get total count for pagination (with same filters)
 	let countQuery = supabase.from("events").select("*", { count: "exact", head: true });
-	
-	if (sportType) countQuery = countQuery.eq("sport_type", sportType);
-	if (tournamentId) countQuery = countQuery.eq("tournament_id", tournamentId);
-	if (teamId) countQuery = countQuery.or(`hometeam_id.eq.${teamId},visiting_id.eq.${teamId}`);
-	if (country) countQuery = countQuery.eq("iso_country", country);
-	if (eventName) countQuery = countQuery.ilike("event_name", `%${eventName}%`);
-	if (queryText) countQuery = countQuery.ilike("event_name", `%${queryText}%`);
-	if (isPopular === "true") countQuery = countQuery.eq("is_popular", true);
-	
-	if (dateStop) {
-		const dateFilter = parseDateFilter(dateStop);
-		if (dateFilter) {
-			if (dateFilter.operator === "gte") {
-				countQuery = countQuery.gte("date_stop", dateFilter.value);
-			} else if (dateFilter.operator === "gt") {
-				countQuery = countQuery.gt("date_stop", dateFilter.value);
-			} else if (dateFilter.operator === "lte") {
-				countQuery = countQuery.lte("date_stop", dateFilter.value);
-			} else if (dateFilter.operator === "lt") {
-				countQuery = countQuery.lt("date_stop", dateFilter.value);
-			} else if (dateFilter.operator === "eq") {
-				countQuery = countQuery.eq("date_stop", dateFilter.value);
-			}
-		}
-	} else if (origin !== "allevents" && sportType) {
-		countQuery = countQuery.gte("date_stop", today);
-	}
-	
+	countQuery = applyFilters(countQuery);
 	const { count: totalCount } = await countQuery;
-	
+
+	const totalPages = Math.max(1, Math.ceil((totalCount || 0) / pageSize));
+	const nextPageParams = new URLSearchParams(searchParams);
+	nextPageParams.delete("page_number");
+	nextPageParams.set("page", String(page + 1));
+	nextPageParams.set("include_facets", "false");
+	const nextPageUrl = page < totalPages ? `/api/xs2/events?${nextPageParams.toString()}` : null;
+
+	const prevPageParams = new URLSearchParams(searchParams);
+	prevPageParams.delete("page_number");
+	prevPageParams.set("page", String(page - 1));
+	const prevPageUrl = page > 1 ? `/api/xs2/events?${prevPageParams.toString()}` : null;
+
+	let facets: Record<string, any> | null = null;
+
+	if (includeFacets) {
+		const facetFields = "event_id,sport_type,tournament_id,tournament_name,iso_country,city,venue_name,event_status,number_of_tickets,min_ticket_price_eur,date_start,date_stop";
+		const facetBatchSize = 1000;
+		const maxFacetBatches = 100;
+		const aggregatedRows: any[] = [];
+		const totalFacetBatches = Math.min(
+			totalCount ? Math.ceil(totalCount / facetBatchSize) : maxFacetBatches,
+			maxFacetBatches
+		);
+
+		for (let batch = 0; batch < totalFacetBatches; batch++) {
+			const fromFacet = batch * facetBatchSize;
+			const toFacet = fromFacet + facetBatchSize - 1;
+			const facetQuery = applyFilters(
+				supabase
+					.from("events")
+					.select(facetFields)
+					.order("event_id", { ascending: true })
+			);
+			const { data: facetData, error: facetError } = await facetQuery.range(fromFacet, toFacet);
+			if (facetError) {
+				console.error("[API] Facet batch error", facetError.message);
+				break;
+			}
+			if (!facetData || facetData.length === 0) {
+				break;
+			}
+			aggregatedRows.push(...facetData);
+		}
+
+		if (aggregatedRows.length > 0) {
+			const sportsCount: Record<string, number> = {};
+			const countryCount: Record<string, number> = {};
+			const cityCount: Record<string, number> = {};
+			const venueCount: Record<string, number> = {};
+			const tournamentCount: Record<string, { id: string; name: string; count: number }> = {};
+			const statusCount: Record<string, number> = {};
+			const priceRanges = {
+				"0-99": 0,
+				"100-199": 0,
+				"200-499": 0,
+				"500-999": 0,
+				"1000+": 0,
+			};
+
+			aggregatedRows.forEach((item) => {
+				const sport = String(item.sport_type ?? "").toLowerCase();
+				if (sport) sportsCount[sport] = (sportsCount[sport] ?? 0) + 1;
+
+				const iso = String(item.iso_country ?? "").toUpperCase();
+				if (iso) countryCount[iso] = (countryCount[iso] ?? 0) + 1;
+
+				const city = String(item.city ?? "").trim();
+				if (city) cityCount[city] = (cityCount[city] ?? 0) + 1;
+
+				const venue = String(item.venue_name ?? "").trim();
+				if (venue) venueCount[venue] = (venueCount[venue] ?? 0) + 1;
+
+				const tId = String(item.tournament_id ?? "").trim();
+				const tName = String(item.tournament_name ?? "").trim();
+				if (tId) {
+					const entry = tournamentCount[tId] ?? { id: tId, name: tName || tId, count: 0 };
+					entry.count += 1;
+					if (tName) entry.name = tName;
+					tournamentCount[tId] = entry;
+				}
+
+				const rawStatus = String(item.event_status ?? "").toLowerCase();
+				const tickets = Number(item.number_of_tickets ?? 0);
+				let derivedStatus = "coming_soon";
+				if (rawStatus === "soldout" || rawStatus === "closed") {
+					derivedStatus = "sales_closed";
+				} else if (rawStatus === "cancelled" || rawStatus === "postponed") {
+					derivedStatus = "not_confirmed";
+				} else if (tickets > 0) {
+					derivedStatus = "on_sale";
+				}
+				statusCount[derivedStatus] = (statusCount[derivedStatus] ?? 0) + 1;
+
+				const price = Number(item.min_ticket_price_eur ?? 0);
+				const priceEur = price > 1000 ? price / 100 : price;
+				if (!Number.isNaN(priceEur) && priceEur > 0) {
+					if (priceEur < 100) priceRanges["0-99"] += 1;
+					else if (priceEur < 200) priceRanges["100-199"] += 1;
+					else if (priceEur < 500) priceRanges["200-499"] += 1;
+					else if (priceEur < 1000) priceRanges["500-999"] += 1;
+					else priceRanges["1000+"] += 1;
+				}
+			});
+
+			facets = {
+				sports: sportsCount,
+				countries: countryCount,
+				cities: cityCount,
+				venues: venueCount,
+				tournaments: Object.values(tournamentCount),
+				statuses: statusCount,
+				price_ranges: priceRanges,
+			};
+		}
+	}
+
 	// Return in XS2-compatible format
 	return {
 		events: filteredData,
 		results: filteredData,
 		items: filteredData,
+		facets,
 		pagination: {
 			page,
 			page_size: pageSize,
 			total: totalCount || 0,
 			total_pages: Math.ceil((totalCount || 0) / pageSize),
-			next_page: page * pageSize < (totalCount || 0) ? page + 1 : null,
-			prev_page: page > 1 ? page - 1 : null,
+			next_page: nextPageUrl,
+			prev_page: prevPageUrl,
 		},
 		status: 200,
 	};

@@ -12,7 +12,6 @@ import { Filter } from "lucide-react";
 import { useFilters } from "@/hooks/use-filters";
 import { useEventsAPI } from "@/hooks/use-events-api";
 import { useDebounce } from "@/hooks/use-debounce";
-import { normalizeToIso3 } from "@/lib/country-flags";
 import { usePathname } from "next/navigation";
 import { getSportPath } from "@/lib/sport-routes";
 
@@ -24,7 +23,7 @@ type EventsExplorerEnhancedProps = {
 export function EventsExplorerEnhanced({ hiddenFilters = [], overrideQuery }: EventsExplorerEnhancedProps) {
 	const pathname = usePathname();
 	const { filters, teamId, showAllEvents, updateFilters, clearFilters, activeFilterCount } = useFilters();
-	const { fetchEvents, loading: apiLoading, error } = useEventsAPI();
+	const { fetchEvents, loading: apiLoading, error, facets } = useEventsAPI();
 	
 	// Detect sport path from pathname
 	const sportPath = getSportPath(filters.sportType[0] || null) || (pathname.startsWith("/formula-1") ? "/formula-1" : pathname.startsWith("/football") ? "/football" : pathname.startsWith("/motogp") ? "/motogp" : pathname.startsWith("/tennis") ? "/tennis" : null);
@@ -39,10 +38,9 @@ export function EventsExplorerEnhanced({ hiddenFilters = [], overrideQuery }: Ev
 
 	// Debounce filter changes to avoid excessive API calls
 	const debouncedFilters = useDebounce(filters, 300);
-	const effectiveQuery = (overrideQuery ?? debouncedFilters.query)?.trim() || "";
 
 	// Fetch events when filters change
-	useEffect(() => {
+		useEffect(() => {
 		let isMounted = true;
 
 		const loadEvents = async () => {
@@ -50,108 +48,16 @@ export function EventsExplorerEnhanced({ hiddenFilters = [], overrideQuery }: Ev
 			setOptimisticEvents(null);
 
 			try {
-				const events = await fetchEvents(debouncedFilters, teamId, showAllEvents);
+				const filtersPayload = overrideQuery
+					? { ...debouncedFilters, query: overrideQuery }
+					: debouncedFilters;
+
+				const events = await fetchEvents(filtersPayload, teamId, showAllEvents);
 				
 				if (!isMounted) return;
 
-				// Apply client-side filters
-				let filtered = events;
-
-				// Filter by selected sport types (if multiple selected)
-				if (debouncedFilters.sportType.length > 0) {
-					filtered = filtered.filter((e: any) => {
-						const eventSportType = String(e.sport_type ?? "").trim().toLowerCase();
-						return debouncedFilters.sportType.some(s => s.toLowerCase() === eventSportType);
-					});
-				}
-
-				// Filter by selected tournaments (if multiple selected)
-				if (debouncedFilters.tournamentId.length > 0) {
-					filtered = filtered.filter((e: any) => {
-						const eventTournamentId = String(e.tournament_id ?? e.id ?? "").trim();
-						return debouncedFilters.tournamentId.includes(eventTournamentId);
-					});
-				}
-
-				// Filter by selected countries (if multiple selected)
-				if (debouncedFilters.countryCode.length > 0) {
-					const normalizedFilterCodes = debouncedFilters.countryCode
-						.map(code => normalizeToIso3(code))
-						.filter((code): code is string => code !== null);
-					filtered = filtered.filter((e: any) => {
-						const eventCountry = String(e.iso_country ?? e.country ?? "").trim().toUpperCase();
-						const normalizedEventCountry = normalizeToIso3(eventCountry);
-						return normalizedFilterCodes.includes(normalizedEventCountry || "");
-					});
-				}
-
-				// Price filter
-				if (debouncedFilters.priceMin > 0 || debouncedFilters.priceMax < 10000) {
-					filtered = filtered.filter((e: any) => {
-						const price = e.min_ticket_price_eur ?? e.min_price_eur ?? 0;
-						const priceInEuros = price > 1000 ? price / 100 : price;
-						if (debouncedFilters.priceMin > 0 && priceInEuros < debouncedFilters.priceMin) return false;
-						if (debouncedFilters.priceMax < 10000 && priceInEuros > debouncedFilters.priceMax) return false;
-						return true;
-					});
-				}
-
-				// City filter
-				if (debouncedFilters.city.length > 0) {
-					filtered = filtered.filter((e: any) => {
-						const city = String(e.city ?? "").trim();
-						return debouncedFilters.city.includes(city);
-					});
-				}
-
-				// Venue filter
-				if (debouncedFilters.venue.length > 0) {
-					filtered = filtered.filter((e: any) => {
-						const venue = String(e.venue_name ?? e.venue ?? "").trim();
-						return debouncedFilters.venue.includes(venue);
-					});
-				}
-
-				// Event Status filter
-				if (debouncedFilters.eventStatus.length > 0) {
-					filtered = filtered.filter((e: any) => {
-						const eventStatus = String(e.event_status ?? "").trim().toLowerCase();
-						const numberOfTickets = e.number_of_tickets ?? 0;
-						
-						let actualStatus: string;
-						
-						if (eventStatus === "soldout" || eventStatus === "closed") {
-							actualStatus = "sales_closed";
-						} else if (eventStatus === "cancelled" || eventStatus === "postponed") {
-							actualStatus = "not_confirmed";
-						} else if (eventStatus === "notstarted" || eventStatus === "nosale") {
-							actualStatus = numberOfTickets > 0 ? "on_sale" : "coming_soon";
-						} else {
-							actualStatus = numberOfTickets > 0 ? "on_sale" : "coming_soon";
-						}
-						
-						return debouncedFilters.eventStatus.includes(actualStatus);
-					});
-				}
-
-				// Query filter (client-side; supports external overrideQuery)
-				if (effectiveQuery) {
-					const queryLower = effectiveQuery.toLowerCase();
-					filtered = filtered.filter((e: any) => {
-						const eventName = String(e.event_name ?? e.name ?? "").toLowerCase();
-						const venueName = String(e.venue_name ?? e.venue ?? "").toLowerCase();
-						const city = String(e.city ?? "").toLowerCase();
-						const tournamentName = String(e.tournament_name ?? e.tournament_official_name ?? "").toLowerCase();
-						
-						return eventName.includes(queryLower) || 
-						       venueName.includes(queryLower) || 
-						       city.includes(queryLower) ||
-						       tournamentName.includes(queryLower);
-					});
-				}
-
 				// Sort events by date (earliest first)
-				filtered.sort((a: any, b: any) => {
+				const sorted = [...events].sort((a: any, b: any) => {
 					const dateA = a.date_start ?? a.date_start_main_event ?? a.date_stop ?? "";
 					const dateB = b.date_start ?? b.date_start_main_event ?? b.date_stop ?? "";
 					if (!dateA && !dateB) return 0;
@@ -162,7 +68,7 @@ export function EventsExplorerEnhanced({ hiddenFilters = [], overrideQuery }: Ev
 
 				if (!isMounted) return;
 
-				setAllEvents(filtered);
+				setAllEvents(sorted);
 				setCurrentPage(1);
 				setOptimisticEvents(null);
 			} catch (err) {
@@ -181,7 +87,7 @@ export function EventsExplorerEnhanced({ hiddenFilters = [], overrideQuery }: Ev
 		return () => {
 			isMounted = false;
 		};
-	}, [debouncedFilters, teamId, showAllEvents, fetchEvents]);
+	}, [debouncedFilters, teamId, showAllEvents, fetchEvents, overrideQuery]);
 
 	// Optimistic update: show previous results while loading
 	useEffect(() => {
@@ -224,6 +130,7 @@ export function EventsExplorerEnhanced({ hiddenFilters = [], overrideQuery }: Ev
 					<EventsFilters 
 						onFilterChange={handleFilterChange} 
 						initialFilters={filters} 
+						facets={facets}
 						events={allEvents}
 						hiddenFilters={hiddenFilters}
 					/>
@@ -413,6 +320,7 @@ export function EventsExplorerEnhanced({ hiddenFilters = [], overrideQuery }: Ev
 						<EventsFilters 
 							onFilterChange={handleFilterChange} 
 							initialFilters={filters} 
+							facets={facets}
 							events={allEvents}
 							isMobile={true}
 							hiddenFilters={hiddenFilters}

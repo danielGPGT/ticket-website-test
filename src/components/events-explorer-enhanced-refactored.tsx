@@ -196,7 +196,7 @@ export function EventsExplorerEnhanced() {
 					<EventsFilters 
 						onFilterChange={handleFilterChange} 
 						initialFilters={filters} 
-						events={allEvents} 
+						facets={null} 
 					/>
 				</aside>
 
@@ -383,8 +383,8 @@ export function EventsExplorerEnhanced() {
 						<EventsFilters 
 							onFilterChange={handleFilterChange} 
 							initialFilters={filters} 
-							events={allEvents} 
-							isMobile={true} 
+							facets={null} 
+							isMobile={true}
 						/>
 					</div>
 				</DrawerContent>

@@ -179,7 +179,7 @@ export function UpcomingEventsSlider() {
 
 		if (loading) {
 		return (
-			<section className="py-16 bg-foreground">
+			<section className="py-12 bg-foreground">
 				<div className="container mx-auto px-4">
 					<SectionHeader
 						title="Upcoming Events"
@@ -205,7 +205,7 @@ export function UpcomingEventsSlider() {
 
 	if (events.length === 0 && !loading) {
 		return (
-			<section className="py-16 bg-foreground">
+			<section className="py-12 bg-foreground">
 				<div className="container mx-auto px-4">
 					<SectionHeader
 						title="Upcoming Events"

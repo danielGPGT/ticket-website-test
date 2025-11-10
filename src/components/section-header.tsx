@@ -44,7 +44,7 @@ export function SectionHeader({
 	const isDark = variant === "dark";
 	
 	return (
-		<div className={cn("mb-8 sm:mb-10 lg:mb-12", className)}>
+		<div className={cn("mb-4 sm:mb-6 lg:mb-8", className)}>
 			<div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 sm:gap-6">
 				{/* Left side - Title and Subtitle */}
 				<div className="flex-1 space-y-2 sm:space-y-3">
@@ -163,4 +163,3 @@ export function SectionHeader({
 		</div>
 	);
 }
-

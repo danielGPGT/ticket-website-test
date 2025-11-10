@@ -489,7 +489,7 @@ export function HeroCarousel() {
 
 						return (
 							<CarouselItem key={event.id} className="pl-0">
-								<div className="relative h-[360px] sm:h-[420px] md:h-[450px] lg:h-[500px]">
+								<div className="relative h-[380px] sm:h-[420px] md:h-[450px] lg:h-[550px]">
 									{/* Background Image */}
                                     <div className="absolute inset-0">
                                         <EventImageWithFallback
@@ -517,23 +517,24 @@ export function HeroCarousel() {
 													{formatSportType(event.sportType)}
 												</Badge>
 												{/* "NOW ON SALE" Badge */}
-												{event.isPopular && (
-													<Badge variant="secondary" className="bg-primary/0 border-white/20 backdrop-blur-xs text-[9px] sm:text-[10px] md:text-xs font-semibold flex items-center gap-1.5 text-[9px] sm:text-[10px] md:text-xs font-semibold px-2 sm:px-2.5 py-0.5 sm:py-1 rounded shadow-md">
+												{event.isOnSale && (
+													<Badge className=" backdrop-blur-xs text-[9px] sm:text-[10px] md:text-xs font-semibold flex items-center gap-1.5 text-[9px] sm:text-[10px] md:text-xs font-semibold px-2 sm:px-2.5 py-0.5 sm:py-1 rounded shadow-md">
 													<Flame className="w-2 h-2 mb-0.5" />
-													<span>Popular</span>
+													<span>On sale</span>
 												</Badge>
 												)}
-												{event.isOnSale && (
+																								{event.isOnSale && (
 													<span className="absolute top-4 right-4 sm:top-6 sm:right-6 text-primary">
 														<Image 
 															src="/images/now-on-sale.png" 
 															alt="NOW ON SALE" 
 															width={100} 
 															height={100} 
-															className="w-20 h-20 sm:w-28 sm:h-28 backdrop-blur-sm" 
+															className="w-20 h-20 sm:w-40 sm:h-40 backdrop-blur-xs" 
 														/>
 													</span>
 												)}
+
 											</div>
 
 											{/* Event Name */}
@@ -589,7 +590,7 @@ export function HeroCarousel() {
 													className="bg-primary hover:bg-primary/90 text-primary-foreground border-2 border-primary/20 shadow-lg hover:shadow-xl transition-all duration-200 text-xs sm:text-sm md:text-base px-4 sm:px-5 md:px-7 h-10 sm:h-11 md:h-12 w-full sm:w-auto"
 												>
 													<Link href={eventUrl} className="flex items-center justify-center">
-														Book Now
+														Book Tickets Now!
 														<ArrowRight className="ml-2 w-3.5 h-3.5 sm:w-4 sm:h-4" />
 													</Link>
 												</Button>
@@ -690,4 +691,3 @@ export function HeroCarousel() {
 		</section>
 	);
 }
-

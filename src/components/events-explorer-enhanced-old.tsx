@@ -593,6 +593,7 @@ export function EventsExplorerEnhanced() {
 										countryCode={countryCode}
 										sportType={e.sport_type}
 										tournamentName={e.tournament_name}
+										tournamentSeason={e.season}
 										city={e.city}
 										minPrice={e.min_ticket_price_eur}
 										maxPrice={e.max_ticket_price_eur}

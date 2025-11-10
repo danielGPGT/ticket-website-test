@@ -1,0 +1,203 @@
+-- WARNING: This schema is for context only and is not meant to be run.
+-- Table order and constraints may not be valid for execution.
+
+CREATE TABLE public.categories (
+  category_id text NOT NULL,
+  category_name text,
+  venue_id text,
+  sport_type text,
+  venue_name text,
+  created timestamp with time zone,
+  on_svg boolean,
+  description jsonb,
+  options jsonb,
+  category_type text,
+  ticket_delivery_days integer,
+  party_size_together integer,
+  distribution_channel text,
+  highlight_type text,
+  files jsonb,
+  sports_enabled ARRAY,
+  sports_disabled ARRAY,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT categories_pkey PRIMARY KEY (category_id)
+);
+CREATE TABLE public.cities (
+  city text NOT NULL,
+  country text NOT NULL,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT cities_pkey PRIMARY KEY (city, country)
+);
+CREATE TABLE public.countries (
+  country text NOT NULL,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT countries_pkey PRIMARY KEY (country)
+);
+CREATE TABLE public.events (
+  event_id text NOT NULL,
+  event_name text,
+  date_start timestamp with time zone,
+  date_stop timestamp with time zone,
+  event_status text,
+  tournament_id text,
+  tournament_name text,
+  venue_id text,
+  venue_name text,
+  location_id text,
+  city text,
+  iso_country text,
+  latitude text,
+  longitude text,
+  sport_type text,
+  season text,
+  tournament_type text,
+  date_confirmed boolean,
+  date_start_main_event timestamp with time zone,
+  date_stop_main_event timestamp with time zone,
+  hometeam_id text,
+  hometeam_name text,
+  visiting_id text,
+  visiting_name text,
+  created timestamp with time zone,
+  updated timestamp with time zone,
+  event_description text,
+  min_ticket_price_eur numeric,
+  max_ticket_price_eur numeric,
+  slug text,
+  number_of_tickets integer,
+  sales_periods jsonb,
+  is_popular boolean,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  image text,
+  CONSTRAINT events_pkey PRIMARY KEY (event_id)
+);
+CREATE TABLE public.orders (
+  id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  customer_email text NOT NULL,
+  customer_name text NOT NULL,
+  customer_phone text,
+  xs2_event_id text NOT NULL,
+  xs2_event_name text NOT NULL,
+  xs2_venue_name text,
+  event_date timestamp without time zone,
+  xs2_ticket_ids ARRAY NOT NULL,
+  ticket_details jsonb NOT NULL,
+  quantity integer NOT NULL CHECK (quantity > 0),
+  subtotal numeric NOT NULL,
+  fees numeric DEFAULT 0,
+  total_amount numeric NOT NULL CHECK (total_amount > 0::numeric),
+  currency text DEFAULT 'EUR'::text,
+  stripe_payment_intent_id text UNIQUE,
+  stripe_session_id text,
+  payment_status text DEFAULT 'pending'::text,
+  status text DEFAULT 'pending'::text,
+  notes text,
+  user_id uuid,
+  created_at timestamp without time zone DEFAULT now(),
+  updated_at timestamp without time zone DEFAULT now(),
+  paid_at timestamp without time zone,
+  CONSTRAINT orders_pkey PRIMARY KEY (id),
+  CONSTRAINT orders_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id)
+);
+CREATE TABLE public.price_alerts (
+  id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  user_id uuid NOT NULL,
+  xs2_event_id text NOT NULL,
+  xs2_event_name text NOT NULL,
+  target_price numeric NOT NULL CHECK (target_price > 0::numeric),
+  current_price numeric,
+  is_active boolean DEFAULT true,
+  notified boolean DEFAULT false,
+  notified_at timestamp without time zone,
+  created_at timestamp without time zone DEFAULT now(),
+  expires_at timestamp without time zone,
+  CONSTRAINT price_alerts_pkey PRIMARY KEY (id),
+  CONSTRAINT price_alerts_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id)
+);
+CREATE TABLE public.sports (
+  sport_id text NOT NULL,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  image text,
+  CONSTRAINT sports_pkey PRIMARY KEY (sport_id)
+);
+CREATE TABLE public.teams (
+  team_id text NOT NULL,
+  official_name text,
+  popular_team boolean,
+  sport_type text,
+  slug text,
+  iso_country text,
+  wikipedia_slug text,
+  wikipedia_snippet text,
+  venue_id text,
+  team_slug text,
+  logo_filename text,
+  colors_svg text,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT teams_pkey PRIMARY KEY (team_id)
+);
+CREATE TABLE public.tournaments (
+  tournament_id text NOT NULL,
+  official_name text,
+  season text,
+  tournament_type text,
+  region text,
+  sport_type text,
+  date_start timestamp with time zone,
+  date_stop timestamp with time zone,
+  slug text,
+  number_events integer,
+  created timestamp with time zone,
+  updated timestamp with time zone,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  image text,
+  CONSTRAINT tournaments_pkey PRIMARY KEY (tournament_id)
+);
+CREATE TABLE public.user_profiles (
+  id uuid NOT NULL,
+  display_name text,
+  phone text,
+  preferred_sports ARRAY,
+  marketing_emails boolean DEFAULT true,
+  created_at timestamp without time zone DEFAULT now(),
+  updated_at timestamp without time zone DEFAULT now(),
+  CONSTRAINT user_profiles_pkey PRIMARY KEY (id),
+  CONSTRAINT user_profiles_id_fkey FOREIGN KEY (id) REFERENCES auth.users(id)
+);
+CREATE TABLE public.venues (
+  venue_id text NOT NULL,
+  official_name text,
+  country text,
+  popular_stadium boolean,
+  venue_type text,
+  capacity integer,
+  city text,
+  province text,
+  latitude text,
+  longitude text,
+  number text,
+  postalcode text,
+  streetname text,
+  opened integer,
+  track_length integer,
+  wikipedia_slug text,
+  wikipedia_snippet text,
+  slug text,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT venues_pkey PRIMARY KEY (venue_id)
+);
+CREATE TABLE public.xs2_sync_triggers (
+  id integer NOT NULL DEFAULT nextval('xs2_sync_triggers_id_seq'::regclass),
+  trigger_type text DEFAULT 'daily_sync'::text,
+  triggered_at timestamp with time zone DEFAULT now(),
+  status text DEFAULT 'pending'::text,
+  CONSTRAINT xs2_sync_triggers_pkey PRIMARY KEY (id)
+);

@@ -86,7 +86,7 @@ async function fetchEventsFromDB(
 	let query = supabase
 		.from("events")
 		.select(
-			"event_id,event_name,date_start,date_stop,date_start_main_event,date_stop_main_event,event_status,tournament_id,iso_country,city,sport_type,is_popular,min_ticket_price_eur,number_of_tickets,image"
+			"event_id,event_name,date_start,date_stop,date_start_main_event,date_stop_main_event,event_status,tournament_id,tournament_name,season,venue_id,venue_name,iso_country,city,sport_type,is_popular,min_ticket_price_eur,number_of_tickets,image"
 		);
 	
 	// Debug: Log column names from first event (development only)
@@ -376,7 +376,7 @@ export async function GET(request: NextRequest) {
 		.sort(([a], [b]) => a.localeCompare(b))
 		.map(([k, v]) => `${k}=${v}`)
 		.join("&");
-	const cacheKey = `events-v2-${sortedParams || "all"}`;
+	const cacheKey = `events-v5-${sortedParams || "all"}`;
 	
 	// If cache should be bypassed, fetch directly without caching
 	if (bypassCache) {

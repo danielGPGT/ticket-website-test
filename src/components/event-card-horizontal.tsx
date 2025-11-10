@@ -20,6 +20,7 @@ type Props = {
 	countryCode?: string | null;
 	sportType?: string;
 	tournamentName?: string;
+	tournamentSeason?: string | number;
 	city?: string;
 	minPrice?: number;
 	maxPrice?: number;
@@ -109,6 +110,7 @@ export function EventCardHorizontal({
 	countryCode, 
 	sportType,
 	tournamentName,
+	tournamentSeason,
 	city,
 	minPrice,
 	maxPrice,
@@ -185,6 +187,19 @@ export function EventCardHorizontal({
 	const isOutOfStock = actualStockStatus === "out_of_stock";
 	const isNotConfirmed = actualStockStatus === "not_confirmed";
 
+	const resolvedTournamentName =
+		tournamentName ??
+		event?.tournament_name ??
+		event?.tournament_official_name ??
+		event?.tournament?.official_name ??
+		null;
+
+	const resolvedTournamentSeason =
+		tournamentSeason ??
+		event?.season ??
+		event?.tournament?.season ??
+		null;
+
 	// Generate URL - use slug-based URL if on sport page, otherwise use ID-based
 	const eventUrl = sportPath && event 
 		? `${sportPath}/${createEventSlug(event)}`
@@ -239,7 +254,16 @@ export function EventCardHorizontal({
 									<div className="flex-1 min-w-0 space-y-1">
 										{/* Time - stack on mobile, inline on larger screens */}
 										{(timeStart || timeEnd) && (
-											<div className="flex flex-col gap-1 sm:gap-1.5 text-muted-foreground text-xs sm:text-sm">
+											<div className="flex gap-2 sm:gap-3 text-muted-foreground text-xs sm:text-sm">
+												{date && (
+													<div className="flex items-center gap-1.5">
+														<Calendar className="w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0" />
+														<span className="whitespace-nowrap">
+															{formatDateRange(date, dateEnd)}
+														</span>
+													</div>
+										
+												)}
 												<div className="flex items-center gap-1.5">
 													<Clock className="w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0" />
 													<span className="whitespace-nowrap">
@@ -250,15 +274,7 @@ export function EventCardHorizontal({
 															: formatTime(timeEnd)}
 													</span>
 												</div>
-												{date && (
-													<div className="flex items-center gap-1.5">
-														<Calendar className="w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0" />
-														<span className="whitespace-nowrap">
-															{formatDateRange(date, dateEnd)}
-														</span>
-													</div>
-										
-												)}
+												
 											</div>
 										)}
 										{/* Date only if no time */}
@@ -270,16 +286,12 @@ export function EventCardHorizontal({
 									</div>
 								</div>
 
-								{/* Tags - more compact on mobile */}
-								<div className="flex flex-wrap gap-1.5 sm:gap-2">
-								{sportType && (
+								{/* Tags - hidden on mobile */}
+								<div className="flex flex-wrap gap-1 sm:gap-2">
+
+									{(resolvedTournamentName || resolvedTournamentSeason) && (
 										<Badge variant="secondary" className="text-[10px] sm:text-xs font-normal bg-muted text-muted-foreground px-1.5 py-0.5">
-											{formatSportType(sportType)}
-										</Badge>
-									)}
-									{tournamentName && (
-										<Badge variant="secondary" className="text-[10px] sm:text-xs font-normal bg-muted text-muted-foreground px-1.5 py-0.5">
-											{tournamentName}
+											{[resolvedTournamentName, resolvedTournamentSeason].filter(Boolean).join(" ")}
 										</Badge>
 									)}
 									{venue && (
@@ -309,8 +321,8 @@ export function EventCardHorizontal({
 								{/* Price Row - only show if in stock or not confirmed */}
 								{(isAvailable || isNotConfirmed) && (
 									<div className="flex items-end justify-start sm:justify-between w-full gap-2">
-										<div className="flex flex-col items-start">
-											<span className="text-[9px] sm:text-[10px] font-medium text-muted-foreground uppercase tracking-wider mb-0.5">From</span>
+										<div className="flex gap-2 sm:gap-0 sm:flex-col items-start">
+											<span className="text-[10px] sm:text-[10px] font-medium text-muted-foreground uppercase tracking-wider mb-0.5">From</span>
 											<div className="font-bold text-foreground leading-none text-base sm:text-lg">
 												{(() => {
 													// Prices are in cents, so divide by 100
@@ -334,33 +346,33 @@ export function EventCardHorizontal({
 										</div>
 										{/* Stock Status Badge - hide on mobile, show on desktop */}
 										{isAvailable && (
-											<Badge variant="secondary" className="sm:inline-flex items-center gap-1 rounded-full mt-0.5 border" style={{ backgroundColor: 'var(--success-subtle)', borderColor: 'var(--success-border)' }}>
-												<div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: 'var(--success)' }} />
-												<span className="font-semibold text-xs text-success" style={{ color: 'var(--success)' }}>On sale</span>
+											<Badge variant="secondary" className="hidden sm:inline-flex items-center gap-1 rounded-full mt-0.5 border bg-green-50">
+												<div className="w-1.5 h-1.5 rounded-full shrink-0 bg-green-500" />
+												<span className=" text-xs text-green-500">On sale</span>
 											</Badge>
 										)}
 										{isNotConfirmed && (
-											<Badge variant="secondary" className="sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full mt-0.5 border" style={{ backgroundColor: 'var(--warning-subtle)', borderColor: 'var(--warning-border)' }}>
-												<div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: 'var(--warning)' }} />
-												<span className="font-semibold text-xs dark:text-warning-100" style={{ color: 'var(--warning-900)' }}>Not confirmed</span>
+											<Badge variant="secondary" className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full mt-0.5 border bg-yellow-50">
+												<div className="w-1.5 h-1.5 rounded-full shrink-0 bg-yellow-500" />
+												<span className=" text-xs text-yellow-500">Not confirmed</span>
 											</Badge>
 										)}
 									</div>
 								)}
 								{/* Status Badge - for coming soon and sales closed (no price) - hide on mobile */}
 								{isComingSoon && (
-									<div className="sm:flex w-full justify-end">
-										<Badge variant="secondary" className="inline-flex items-center gap-1 rounded-full mt-0.5 border" style={{ backgroundColor: 'var(--secondary-50)', borderColor: 'var(--secondary-200)' }}>
-											<div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: 'var(--secondary)' }} />
-											<span className="font-semibold text-xs" style={{ color: 'var(--secondary)' }}>Coming soon</span>
+									<div className="hidden sm:flex w-full justify-end">
+										<Badge variant="secondary" className="inline-flex items-center gap-1 rounded-full mt-0.5 border bg-gray-50">
+											<div className="w-1.5 h-1.5 rounded-full shrink-0 bg-gray-500" />
+											<span className="text-xs text-gray-500">Coming soon</span>
 										</Badge>
 									</div>
 								)}
 								{isOutOfStock && (
-									<div className="sm:flex w-full justify-end">
-										<Badge variant="secondary" className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full mt-0.5 border" style={{ backgroundColor: 'var(--destructive-subtle)', borderColor: 'var(--destructive-border)' }}>
-											<div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: 'var(--destructive)' }} />
-											<span className="font-semibold text-xs dark:text-destructive-100" style={{ color: 'var(--destructive-600)' }}>Sales closed</span>
+									<div className="hidden sm:flex w-full justify-end">
+										<Badge variant="secondary" className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full mt-0.5 border bg-red-50">
+											<div className="w-1.5 h-1.5 rounded-full shrink-0 bg-red-600" />
+											<span className=" text-xs text-red-600">Sales closed</span>
 										</Badge>
 									</div>
 								)}

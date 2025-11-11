@@ -63,3 +63,24 @@ export function resolveSportTypeFromSlug(slug: string | null | undefined): strin
 	return withoutDashes || null;
 }
 
+/**
+ * Resolves a public-facing slug for a sport type (e.g. "formula1" -> "formula-1")
+ */
+export function resolveDynamicSportSlug(sportType: string | null | undefined): string | null {
+	if (!sportType) return null;
+	const normalized = String(sportType).toLowerCase().trim();
+	if (!normalized) return null;
+
+	if (SPORT_PATHS[normalized]) {
+		return SPORT_PATHS[normalized].replace(/^\//, "");
+	}
+
+	if (normalized.includes("-")) {
+		return normalized;
+	}
+
+	// Replace digits with hyphen-digit (slug style) for common patterns like formula1 -> formula-1
+	const withHyphenBeforeDigits = normalized.replace(/(\d+)/g, (match) => `-${match}`);
+	return withHyphenBeforeDigits.startsWith("-") ? withHyphenBeforeDigits.slice(1) : withHyphenBeforeDigits;
+}
+

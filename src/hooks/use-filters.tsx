@@ -2,7 +2,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
-import { usePathname, useSearchParams } from "next/navigation";
+import { usePathname, useSearchParams, useRouter } from "next/navigation";
 
 export type FilterState = {
 	sportType: string[];
@@ -119,6 +119,49 @@ function buildFiltersFromSearch(pathname: string, params: URLSearchParams): Filt
 	return filters;
 }
 
+function serializeFilters(filters: FilterState, base: FilterState): string {
+	const params = new URLSearchParams();
+
+	if (!arraysEqual(filters.sportType, base.sportType) && filters.sportType.length > 0) {
+		params.set("sport_type", filters.sportType.join(","));
+	}
+	if (!arraysEqual(filters.tournamentId, base.tournamentId) && filters.tournamentId.length > 0) {
+		params.set("tournament_id", filters.tournamentId.join(","));
+	}
+	if (!arraysEqual(filters.countryCode, base.countryCode) && filters.countryCode.length > 0) {
+		params.set("country", filters.countryCode.join(","));
+	}
+	if (!arraysEqual(filters.city, base.city) && filters.city.length > 0) {
+		params.set("city", filters.city.join(","));
+	}
+	if (!arraysEqual(filters.venue, base.venue) && filters.venue.length > 0) {
+		params.set("venue", filters.venue.join(","));
+	}
+	if (filters.dateFrom && filters.dateFrom !== base.dateFrom) {
+		params.set("date_from", filters.dateFrom);
+	}
+	if (filters.dateTo && filters.dateTo !== base.dateTo) {
+		params.set("date_to", filters.dateTo);
+	}
+	if (filters.priceMin !== base.priceMin) {
+		params.set("price_min", String(filters.priceMin));
+	}
+	if (filters.priceMax !== base.priceMax) {
+		params.set("price_max", String(filters.priceMax));
+	}
+	if ((filters.query || "") !== (base.query || "")) {
+		params.set("query", filters.query);
+	}
+	if (filters.popularEvents !== base.popularEvents) {
+		params.set("popular_events", String(filters.popularEvents));
+	}
+	if (!arraysEqual(filters.eventStatus, base.eventStatus) && filters.eventStatus.length > 0) {
+		params.set("event_status", filters.eventStatus.join(","));
+	}
+
+	return params.toString();
+}
+
 function arraysEqual(a: string[], b: string[]) {
 	if (a.length !== b.length) return false;
 	return a.every((value, index) => value === b[index]);
@@ -163,6 +206,7 @@ function countActiveFilters(current: FilterState, base: FilterState) {
 export function FiltersProvider({ children }: { children: ReactNode }) {
 	const pathname = usePathname();
 	const searchParams = useSearchParams();
+	const router = useRouter();
 
 	const searchParamsKey = useMemo(() => searchParams.toString(), [searchParams]);
 	const searchParamsSnapshot = useMemo(() => new URLSearchParams(searchParamsKey), [searchParamsKey]);
@@ -172,6 +216,8 @@ export function FiltersProvider({ children }: { children: ReactNode }) {
 
 	const [filters, setFilters] = useState<FilterState>(initialFilters);
 	const baseFiltersRef = useRef(baseFilters);
+	const lastSyncedSearchRef = useRef<string>(searchParamsKey);
+	const isNavigatingRef = useRef(false);
 
 	useEffect(() => {
 		baseFiltersRef.current = baseFilters;
@@ -179,6 +225,8 @@ export function FiltersProvider({ children }: { children: ReactNode }) {
 
 	useEffect(() => {
 		setFilters(cloneFilters(initialFilters));
+		lastSyncedSearchRef.current = searchParamsKey;
+		isNavigatingRef.current = false;
 	}, [initialFilters]);
 
 	const updateFilters = useCallback((partial: Partial<FilterState> | FilterState) => {
@@ -210,6 +258,28 @@ const showAllEvents = useMemo(() => {
 		() => countActiveFilters(filters, baseFiltersRef.current),
 		[filters],
 	);
+
+	useEffect(() => {
+		if (!router || !pathname) return;
+
+		// Prevent feedback loop when updates originate from router changes
+		if (isNavigatingRef.current) {
+			isNavigatingRef.current = false;
+			return;
+		}
+
+		const serialized = serializeFilters(filters, baseFiltersRef.current);
+
+		// Skip if nothing changed
+		if (serialized === lastSyncedSearchRef.current) {
+			return;
+		}
+
+		lastSyncedSearchRef.current = serialized;
+		const target = serialized ? `${pathname}?${serialized}` : pathname;
+		isNavigatingRef.current = true;
+		router.replace(target, { scroll: false });
+	}, [filters, pathname, router]);
 
 	const contextValue = useMemo<FiltersContextValue>(() => ({
 		filters,

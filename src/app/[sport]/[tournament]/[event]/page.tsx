@@ -1,3 +1,4 @@
+import { cache } from "react";
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import {
@@ -12,7 +13,7 @@ import {
 } from "@/lib/seo";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
 import { EventDetailContent } from "@/components/event-detail-content";
-import { resolveSportTypeFromSlug } from "@/lib/sport-routes";
+import { resolveDynamicSportSlug, resolveSportTypeFromSlug } from "@/lib/sport-routes";
 
 type RouteParams = { sport: string; tournament: string; event: string };
 type PageParams = {
@@ -64,190 +65,188 @@ type SportRecord = {
 
 export const revalidate = 3600; // 1 hour
 
-async function fetchTournamentBySlug(
-	sportSlug: string,
-	sportType: string,
-	tournamentSlug: string,
-): Promise<TournamentRecord | null> {
+const fetchTournamentBySlug = cache(
+	async (sportSlug: string, sportType: string, tournamentSlug: string): Promise<TournamentRecord | null> => {
+		const supabase = getSupabaseAdmin();
+		const sportTypeCandidates = buildSportTypeCandidates(sportSlug, sportType);
+
+		const selectBase = () =>
+			supabase
+				.from("tournaments")
+				.select("tournament_id,slug,sport_type,official_name,image,updated_at");
+
+		const { data } = await selectBase()
+			.eq("slug", tournamentSlug)
+			.in("sport_type", sportTypeCandidates)
+			.maybeSingle();
+
+		if (data) {
+			return data;
+		}
+
+		const { data: fuzzyStartsWith } = await selectBase()
+			.ilike("slug", `${tournamentSlug}%`)
+			.in("sport_type", sportTypeCandidates)
+			.order("updated_at", { ascending: false })
+			.limit(1)
+			.maybeSingle();
+
+		if (fuzzyStartsWith) {
+			return fuzzyStartsWith;
+		}
+
+		const { data: fuzzyContains } = await selectBase()
+			.ilike("slug", `%${tournamentSlug}%`)
+			.in("sport_type", sportTypeCandidates)
+			.order("updated_at", { ascending: false })
+			.limit(1)
+			.maybeSingle();
+
+		if (fuzzyContains) {
+			return fuzzyContains;
+		}
+
+		const { data: fallback } = await selectBase()
+			.eq("slug", tournamentSlug)
+			.maybeSingle();
+
+		return fallback ?? null;
+	},
+);
+
+const fetchSportRecord = cache(async (sportSlug: string, sportType: string): Promise<SportRecord | null> => {
 	const supabase = getSupabaseAdmin();
 	const sportTypeCandidates = buildSportTypeCandidates(sportSlug, sportType);
-
-	const baseSelect = () =>
-		supabase
-			.from("tournaments")
-			.select("tournament_id,slug,sport_type,official_name,image,updated_at");
-
-	const { data } = await baseSelect()
-		.eq("slug", tournamentSlug)
-		.in("sport_type", sportTypeCandidates)
-		.maybeSingle();
-
-	if (data) {
-		return data;
-	}
-
-	const { data: fuzzyStartsWith } = await baseSelect()
-		.ilike("slug", `${tournamentSlug}%`)
-		.in("sport_type", sportTypeCandidates)
-		.order("updated_at", { ascending: false })
-		.limit(1)
-		.maybeSingle();
-
-	if (fuzzyStartsWith) {
-		return fuzzyStartsWith;
-	}
-
-	const { data: fuzzyContains } = await baseSelect()
-		.ilike("slug", `%${tournamentSlug}%`)
-		.in("sport_type", sportTypeCandidates)
-		.order("updated_at", { ascending: false })
-		.limit(1)
-		.maybeSingle();
-
-	if (fuzzyContains) {
-		return fuzzyContains;
-	}
-
-	const { data: fallback } = await baseSelect()
-		.eq("slug", tournamentSlug)
-		.maybeSingle();
-
-	return fallback ?? null;
-}
-
-async function fetchSportRecord(sportSlug: string, sportType: string): Promise<SportRecord | null> {
-	const supabase = getSupabaseAdmin();
-	const sportTypeCandidates = buildSportTypeCandidates(sportSlug, sportType);
-	const baseSelect = () =>
+	const selectBase = () =>
 		supabase
 			.from("sports")
 			.select("sport_id,image");
 
-	const { data } = await baseSelect()
+	const { data } = await selectBase()
 		.in("sport_id", sportTypeCandidates)
 		.maybeSingle();
 
 	if (data) return data;
 
-	const { data: fallback } = await baseSelect()
+	const { data: fallback } = await selectBase()
 		.ilike("sport_id", `${sportSlug}%`)
 		.limit(1)
 		.maybeSingle();
 
 	return fallback ?? null;
-}
+});
 
 const EVENT_COLUMNS =
 	"event_id,event_name,date_start,date_stop,event_status,tournament_id,tournament_name,venue_id,venue_name,location_id,city,iso_country,latitude,longitude,sport_type,season,tournament_type,date_confirmed,date_start_main_event,date_stop_main_event,hometeam_id,hometeam_name,visiting_id,visiting_name,created,updated,event_description,min_ticket_price_eur,max_ticket_price_eur,slug,number_of_tickets,sales_periods,is_popular,created_at,updated_at,image";
 
-async function fetchEventBySlug(
-	sportType: string,
-	sportSlug: string,
-	tournament: TournamentRecord,
-	eventSlug: string,
-): Promise<EventRecord | null> {
-	const supabase = getSupabaseAdmin();
-	const sportTypeCandidates = buildSportTypeCandidates(sportSlug, sportType);
-	const baseSelect = () =>
-		supabase
-			.from("events")
-			.select(`${EVENT_COLUMNS},updated_at`)
-			.eq("tournament_id", tournament.tournament_id);
+const fetchEventBySlug = cache(
+	async (
+		sportType: string,
+		sportSlug: string,
+		tournament: TournamentRecord,
+		eventSlug: string,
+	): Promise<EventRecord | null> => {
+		const supabase = getSupabaseAdmin();
+		const sportTypeCandidates = buildSportTypeCandidates(sportSlug, sportType);
+		const selectBase = () =>
+			supabase
+				.from("events")
+				.select(`${EVENT_COLUMNS},updated_at`)
+				.eq("tournament_id", tournament.tournament_id);
 
-	const { data } = await baseSelect()
-		.eq("slug", eventSlug)
-		.in("sport_type", sportTypeCandidates)
-		.maybeSingle();
+		const { data } = await selectBase()
+			.eq("slug", eventSlug)
+			.in("sport_type", sportTypeCandidates)
+			.maybeSingle();
 
-	if (data) {
-		return data as EventRecord;
-	}
+		if (data) {
+			return data as EventRecord;
+		}
 
-	const { data: fuzzyStartsWith } = await baseSelect()
-		.ilike("slug", `${eventSlug}%`)
-		.in("sport_type", sportTypeCandidates)
-		.order("updated_at", { ascending: false })
-		.limit(1)
-		.maybeSingle();
+		const { data: fuzzyStartsWith } = await selectBase()
+			.ilike("slug", `${eventSlug}%`)
+			.in("sport_type", sportTypeCandidates)
+			.order("updated_at", { ascending: false })
+			.limit(1)
+			.maybeSingle();
 
-	if (fuzzyStartsWith) {
-		return fuzzyStartsWith as EventRecord;
-	}
+		if (fuzzyStartsWith) {
+			return fuzzyStartsWith as EventRecord;
+		}
 
-	const { data: fuzzyContains } = await baseSelect()
-		.ilike("slug", `%${eventSlug}%`)
-		.in("sport_type", sportTypeCandidates)
-		.order("updated_at", { ascending: false })
-		.limit(1)
-		.maybeSingle();
+		const { data: fuzzyContains } = await selectBase()
+			.ilike("slug", `%${eventSlug}%`)
+			.in("sport_type", sportTypeCandidates)
+			.order("updated_at", { ascending: false })
+			.limit(1)
+			.maybeSingle();
 
-	if (fuzzyContains) {
-		return fuzzyContains as EventRecord;
-	}
+		if (fuzzyContains) {
+			return fuzzyContains as EventRecord;
+		}
 
-	const { data: fallback } = await baseSelect()
-		.eq("slug", eventSlug)
-		.maybeSingle();
+		const { data: fallback } = await selectBase()
+			.eq("slug", eventSlug)
+			.maybeSingle();
 
-	return (fallback as EventRecord | null) ?? null;
-}
+		return (fallback as EventRecord | null) ?? null;
+	},
+);
 
-async function fetchEventBySlugLoose(
-	sportSlug: string,
-	sportType: string,
-	eventSlug: string,
-): Promise<EventRecord | null> {
-	const supabase = getSupabaseAdmin();
-	const sportTypeCandidates = buildSportTypeCandidates(sportSlug, sportType);
+const fetchEventBySlugLoose = cache(
+	async (sportSlug: string, sportType: string, eventSlug: string): Promise<EventRecord | null> => {
+		const supabase = getSupabaseAdmin();
+		const sportTypeCandidates = buildSportTypeCandidates(sportSlug, sportType);
 
-	const baseSelect = () =>
-		supabase
-			.from("events")
-			.select(`${EVENT_COLUMNS},updated_at`);
+		const selectBase = () =>
+			supabase
+				.from("events")
+				.select(`${EVENT_COLUMNS},updated_at`);
 
-	const { data } = await baseSelect()
-		.eq("slug", eventSlug)
-		.in("sport_type", sportTypeCandidates)
-		.maybeSingle();
+		const { data } = await selectBase()
+			.eq("slug", eventSlug)
+			.in("sport_type", sportTypeCandidates)
+			.maybeSingle();
 
-	if (data) {
-		return data as EventRecord;
-	}
+		if (data) {
+			return data as EventRecord;
+		}
 
-	const { data: fuzzyStartsWith } = await baseSelect()
-		.ilike("slug", `${eventSlug}%`)
-		.in("sport_type", sportTypeCandidates)
-		.order("updated_at", { ascending: false })
-		.limit(1)
-		.maybeSingle();
+		const { data: fuzzyStartsWith } = await selectBase()
+			.ilike("slug", `${eventSlug}%`)
+			.in("sport_type", sportTypeCandidates)
+			.order("updated_at", { ascending: false })
+			.limit(1)
+			.maybeSingle();
 
-	if (fuzzyStartsWith) {
-		return fuzzyStartsWith as EventRecord;
-	}
+		if (fuzzyStartsWith) {
+			return fuzzyStartsWith as EventRecord;
+		}
 
-	const { data: fuzzyContains } = await baseSelect()
-		.ilike("slug", `%${eventSlug}%`)
-		.in("sport_type", sportTypeCandidates)
-		.order("updated_at", { ascending: false })
-		.limit(1)
-		.maybeSingle();
+		const { data: fuzzyContains } = await selectBase()
+			.ilike("slug", `%${eventSlug}%`)
+			.in("sport_type", sportTypeCandidates)
+			.order("updated_at", { ascending: false })
+			.limit(1)
+			.maybeSingle();
 
-	if (fuzzyContains) {
-		return fuzzyContains as EventRecord;
-	}
+		if (fuzzyContains) {
+			return fuzzyContains as EventRecord;
+		}
 
-	const { data: fallback } = await baseSelect()
-		.eq("slug", eventSlug)
-		.maybeSingle();
+		const { data: fallback } = await selectBase()
+			.eq("slug", eventSlug)
+			.maybeSingle();
 
-	return (fallback as EventRecord | null) ?? null;
-}
+		return (fallback as EventRecord | null) ?? null;
+	},
+);
 
-async function fetchTournamentById(tournamentId: string): Promise<TournamentRecord | null> {
+const fetchTournamentById = cache(async (tournamentId: string): Promise<TournamentRecord | null> => {
 	const supabase = getSupabaseAdmin();
 	const { data, error } = await supabase
 		.from("tournaments")
-		.select("tournament_id,slug,sport_type,official_name,image")
+		.select("tournament_id,slug,sport_type,official_name,image,updated_at")
 		.eq("tournament_id", tournamentId)
 		.single();
 
@@ -256,7 +255,7 @@ async function fetchTournamentById(tournamentId: string): Promise<TournamentReco
 	}
 
 	return data;
-}
+});
 
 async function fetchTickets(eventId: string) {
 	const qs = new URLSearchParams({
@@ -349,17 +348,6 @@ async function fetchEventContext(
 	return { event, tournament: resolvedTournament, sport };
 }
 
-type EventSlugRow = {
-	slug: string | null;
-	sport_type: string | null;
-	tournament_id: string | null;
-};
-
-type TournamentSlugRow = {
-	tournament_id: string | null;
-	slug: string | null;
-};
-
 async function resolveParams(params: PageParams["params"]): Promise<RouteParams | null> {
 	if (!params) return null;
 
@@ -379,7 +367,73 @@ async function resolveParams(params: PageParams["params"]): Promise<RouteParams 
 }
 
 export async function generateStaticParams() {
-	return [];
+	const supabase = getSupabaseAdmin();
+
+	type PopularEventRow = {
+		slug: string | null;
+		sport_type: string | null;
+		tournament_id: string | null;
+		is_popular: boolean | null;
+	};
+
+	const { data: events } = await supabase
+		.from("events")
+		.select("slug,sport_type,tournament_id,is_popular")
+		.eq("is_popular", true)
+		.not("slug", "is", null)
+		.limit(250)
+		.returns<Array<PopularEventRow>>();
+
+	if (!events?.length) {
+		return [];
+	}
+
+	const tournamentIds = Array.from(
+		new Set(events.map((event) => event.tournament_id).filter((id): id is string => typeof id === "string")),
+	);
+
+	let tournamentSlugById = new Map<string, string>();
+
+	if (tournamentIds.length > 0) {
+		const { data: tournaments } = await supabase
+			.from("tournaments")
+			.select("tournament_id,slug")
+			.in("tournament_id", tournamentIds)
+			.not("slug", "is", null)
+			.limit(500)
+			.returns<Array<{ tournament_id: string | null; slug: string | null }>>();
+
+		tournamentSlugById = new Map(
+			(tournaments ?? [])
+				.filter((t): t is { tournament_id: string; slug: string } => Boolean(t.tournament_id && t.slug))
+				.map((t) => [t.tournament_id, t.slug.toLowerCase()]),
+		);
+	}
+
+	const params = new Map<string, { sport: string; tournament: string; event: string }>();
+
+	for (const event of events) {
+		const eventSlug = typeof event.slug === "string" ? event.slug.toLowerCase() : null;
+		const sportSlug =
+			resolveDynamicSportSlug(event.sport_type ?? "") ??
+			(event.sport_type ? event.sport_type.toLowerCase() : null);
+		const tournamentSlug = event.tournament_id ? tournamentSlugById.get(event.tournament_id) : null;
+
+		if (!eventSlug || !sportSlug || !tournamentSlug) {
+			continue;
+		}
+
+		const key = `${sportSlug}/${tournamentSlug}/${eventSlug}`;
+		if (!params.has(key)) {
+			params.set(key, {
+				sport: sportSlug,
+				tournament: tournamentSlug,
+				event: eventSlug,
+			});
+		}
+	}
+
+	return Array.from(params.values());
 }
 
 export async function generateMetadata({ params }: PageParams): Promise<Metadata> {

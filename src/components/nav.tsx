@@ -2,23 +2,33 @@
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import { getSportPath } from "@/lib/sport-routes";
+import { buildSportPath } from "@/lib/seo";
 
-const sports = [
-	{ href: "/events?sport_type=formula1", label: "Formula 1" },
-	{ href: "/events?sport_type=football", label: "Football" },
-	{ href: "/events?sport_type=motogp", label: "MotoGP" },
-	{ href: "/events?sport_type=tennis", label: "Tennis" },
+const sportItems = [
+	{ id: "formula1", slug: "formula-1", label: "Formula 1" },
+	{ id: "football", slug: "football", label: "Football" },
+	{ id: "motogp", slug: "motogp", label: "MotoGP" },
+	{ id: "tennis", slug: "tennis", label: "Tennis" },
 ];
-const explore = [
-	{ href: "/events?sport_type=formula1&tournament=all", label: "Tournaments" },
-	{ href: "/events?teams=all", label: "Teams" },
-	{ href: "/events?venues=popular", label: "Venues" },
+
+const exploreItems = [
+	{ href: "/geography", label: "Destinations" },
+	{ href: "/venues", label: "Venues" },
 ];
 
 export function NavBar() {
 	const pathname = usePathname();
 	const [mobileOpen, setMobileOpen] = useState(false);
+
+	const sports = useMemo(() => {
+		return sportItems.map((item) => {
+			const path = getSportPath(item.id) ?? buildSportPath(item.slug);
+			return { href: path, label: item.label };
+		});
+	}, []);
+
 	return (
 		<header className="sticky top-0 z-50 border-b border-zinc-200 bg-white/90 backdrop-blur supports-[backdrop-filter]:bg-white/60">
 			<div className="mx-auto max-w-6xl px-4 py-3 flex items-center gap-4">
@@ -44,7 +54,7 @@ export function NavBar() {
 					<details className="group relative">
 						<summary className="list-none px-3 py-2 rounded-md hover:bg-zinc-100 cursor-pointer">Explore</summary>
 						<div className="absolute left-0 mt-2 min-w-[200px] rounded-md border border-zinc-200 bg-white shadow-md p-1">
-							{explore.map((item) => (
+							{exploreItems.map((item) => (
 								<Link key={item.href} href={item.href} className="block rounded px-3 py-2 hover:bg-zinc-100">
 									{item.label}
 								</Link>
@@ -71,7 +81,7 @@ export function NavBar() {
 						<details>
 							<summary className="cursor-pointer px-2 py-2 rounded hover:bg-zinc-100">Explore</summary>
 							<div className="pl-3 pt-1 space-y-1">
-								{explore.map((item) => (
+								{exploreItems.map((item) => (
 									<Link key={item.href} href={item.href} className="block rounded px-2 py-2 hover:bg-zinc-100" onClick={() => setMobileOpen(false)}>
 										{item.label}
 									</Link>

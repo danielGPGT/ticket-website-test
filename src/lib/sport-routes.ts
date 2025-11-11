@@ -21,20 +21,45 @@ export const PATH_TO_SPORT: Record<string, string> = {
  */
 export function getSportPath(sportType?: string | null): string | null {
 	if (!sportType) return null;
-	return SPORT_PATHS[sportType.toLowerCase()] ?? null;
+	const normalized = sportType.toLowerCase();
+	return SPORT_PATHS[normalized] ?? `/${normalized}`;
 }
 
 /**
  * Gets the sport type from a pathname
  */
 export function getSportFromPath(pathname: string): string | null {
-	return PATH_TO_SPORT[pathname] ?? null;
+	if (!pathname) return null;
+	const normalizedPath = pathname.startsWith("/") ? pathname : `/${pathname}`;
+	if (PATH_TO_SPORT[normalizedPath]) {
+		return PATH_TO_SPORT[normalizedPath];
+	}
+	const dynamicSlug = normalizedPath.slice(1);
+	return dynamicSlug ? dynamicSlug.toLowerCase() : null;
 }
 
 /**
  * Checks if a pathname is a sport page
  */
 export function isSportPage(pathname: string): boolean {
-	return pathname in PATH_TO_SPORT;
+	return getSportFromPath(pathname) !== null;
+}
+
+/**
+ * Resolves the internal sport type identifier (e.g. "formula1") from a route slug (e.g. "formula-1")
+ */
+export function resolveSportTypeFromSlug(slug: string | null | undefined): string | null {
+	if (!slug) return null;
+	const normalized = slug.toLowerCase().replace(/^\//, "");
+	const asPath = `/${normalized}`;
+	if (PATH_TO_SPORT[asPath]) {
+		return PATH_TO_SPORT[asPath];
+	}
+	if (SPORT_PATHS[normalized]) {
+		return normalized;
+	}
+	// Fallback: remove dashes to align with common identifier format (e.g. formula-1 -> formula1)
+	const withoutDashes = normalized.replace(/-/g, "");
+	return withoutDashes || null;
 }
 

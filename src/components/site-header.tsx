@@ -50,9 +50,61 @@ const countryNameMap: Record<string, string> = {
 
 import { iso3ToIso2 } from "@/lib/country-flags";
 import { CountryFlag } from "@/components/country-flag";
+import { buildSportPath, buildTournamentPath, buildCountryPath, resolveEventHref } from "@/lib/seo";
+import { getSportPath } from "@/lib/sport-routes";
+import { createSlug } from "@/lib/slug";
 
 function formatCountryName(code: string): string {
 	return countryNameMap[code.toUpperCase()] ?? code;
+}
+
+function resolveSportHref(id: string): string {
+	const normalized = id === "soccer" ? "football" : id;
+	const path = getSportPath(normalized) ?? buildSportPath(normalized);
+	return path.replace(/\/+$/, "") || "/events";
+}
+
+function resolveCountryHref(code: string): string | null {
+	const name = formatCountryName(code);
+	const slug = createSlug(name);
+	return slug ? buildCountryPath(slug) : null;
+}
+
+function resolveTournamentHref(sportId: string, tournament: any): string | null {
+	const slug = tournament?.slug?.toLowerCase?.();
+	if (!slug) return null;
+	const sportPath = resolveSportHref(sportId);
+	const sportSlug = sportPath.replace(/^\//, "");
+	if (!sportSlug) return null;
+	return buildTournamentPath(sportSlug, slug);
+}
+
+function resolveEventLink(eventData: any, fallbackSport?: string | null): string {
+	const sportType =
+		fallbackSport ??
+		eventData?.sport_type ??
+		eventData?.sportType ??
+		eventData?.event?.sport_type ??
+		eventData?.event?.sportType ??
+		null;
+
+	return resolveEventHref(
+		{
+			id: eventData?.event_id ?? eventData?.id ?? "",
+			event_id: eventData?.event_id ?? eventData?.id ?? "",
+			slug: eventData?.slug ?? eventData?.event_slug ?? eventData?.event?.slug ?? null,
+			event: eventData?.event ?? eventData,
+			sport_type: sportType,
+			sportType,
+			tournament_id: eventData?.tournament_id ?? eventData?.tournamentId ?? null,
+			tournamentId: eventData?.tournament_id ?? eventData?.tournamentId ?? null,
+			tournament: eventData?.tournament ?? null,
+		},
+		{
+			sportType,
+			tournamentSlug: eventData?.tournament?.slug ?? eventData?.tournament_slug ?? null,
+		},
+	);
 }
 
 export function SiteHeader() {
@@ -151,10 +203,10 @@ export function SiteHeader() {
 	const mainIds = new Set(["football", "formula1", "motogp", "tennis"]);
 	const mainSports = useMemo(() => {
 		const byId: Record<string, { href: string; label: string }> = {
-			football: { href: "/football", label: "Football" },
-			formula1: { href: "/formula-1", label: "Formula 1" },
-			motogp: { href: "/motogp", label: "MotoGP" },
-			tennis: { href: "/tennis", label: "Tennis" },
+			football: { href: resolveSportHref("football"), label: "Football" },
+			formula1: { href: resolveSportHref("formula1"), label: "Formula 1" },
+			motogp: { href: resolveSportHref("motogp"), label: "MotoGP" },
+			tennis: { href: resolveSportHref("tennis"), label: "Tennis" },
 		};
 		return ["football", "formula1", "motogp", "tennis"].filter((id) => fetchedSports.includes(id) || id).map((id) => byId[id]);
 	}, [fetchedSports]);
@@ -162,7 +214,7 @@ export function SiteHeader() {
 	const otherSports = useMemo(() => {
 		const ids = fetchedSports.filter((id) => !mainIds.has(id));
 		const humanize = (s: string) => s.replace(/_/g, " ").replace(/\b\w/g, (m) => m.toUpperCase());
-		return ids.map((id) => ({ id, label: humanize(id), href: `/events?sport_type=${encodeURIComponent(id)}` })).slice(0, 20);
+		return ids.map((id) => ({ id, label: humanize(id), href: resolveSportHref(id) })).slice(0, 20);
 	}, [fetchedSports]);
 
 	function onSearchSubmit(e: React.FormEvent, closeSheet?: () => void) {
@@ -192,12 +244,52 @@ export function SiteHeader() {
 	async function loadEventsForSport(id: string) {
 		if (otherSportEvents[id]) return;
 		setOtherSportLoading(true);
-		const today = new Date().toISOString().split("T")[0];
-		const res = await fetch(`/api/xs2/events?sport_type=${encodeURIComponent(id)}&date_stop=ge:${today}&page_size=50`);
-		const data = await res.json();
-		const items = (data.events ?? data.results ?? data.items ?? []) as any[];
-		setOtherSportEvents((prev) => ({ ...prev, [id]: items }));
-		setOtherSportLoading(false);
+		try {
+			const today = new Date().toISOString().split("T")[0];
+			const res = await fetch(`/api/xs2/events?sport_type=${encodeURIComponent(id)}&date_stop=ge:${today}&page_size=50`);
+			const data = await res.json();
+			const items = (data.events ?? data.results ?? data.items ?? []) as any[];
+
+			let enrichedItems = items;
+			const tournamentIds = Array.from(
+				new Set(items.map((item: any) => item.tournament_id ?? item.tournamentId).filter(Boolean)),
+			) as string[];
+
+			if (tournamentIds.length > 0) {
+				try {
+					const tournamentsRes = await fetch(
+						`/api/xs2/tournaments?tournament_ids=${encodeURIComponent(tournamentIds.join(","))}`,
+					);
+					if (tournamentsRes.ok) {
+						const tournamentsData = await tournamentsRes.json();
+						const tournaments = (tournamentsData.tournaments ?? tournamentsData.results ?? []) as any[];
+						const tournamentMap = new Map<string, any>();
+						tournaments.forEach((t) => {
+							if (t?.tournament_id) {
+								tournamentMap.set(t.tournament_id, t);
+							}
+						});
+
+						enrichedItems = items.map((item: any) => {
+							const tournament = tournamentMap.get(item.tournament_id ?? item.tournamentId);
+							return {
+								...item,
+								tournament,
+								tournament_slug: tournament?.slug ?? item.tournament_slug ?? null,
+							};
+						});
+					}
+				} catch (err) {
+					console.error("[SiteHeader] Failed to enrich tournaments for sport:", id, err);
+				}
+			}
+
+			setOtherSportEvents((prev) => ({ ...prev, [id]: enrichedItems }));
+		} catch (error) {
+			console.error("[SiteHeader] Error loading events for sport:", id, error);
+		} finally {
+			setOtherSportLoading(false);
+		}
 	}
 
 	async function loadTennisTournaments() {
@@ -585,7 +677,7 @@ export function SiteHeader() {
 													{footballCountries.map((code) => (
 														<Link
 															key={code}
-															href={`/events?sport_type=football&iso_country=${encodeURIComponent(code)}`}
+															href={resolveCountryHref(code) ?? resolveSportHref("football")}
 															className="block px-3 py-2.5 rounded-lg hover:bg-accent active:bg-muted transition-colors"
 															onClick={() => {
 																setMobileExpanded((p) => ({ ...p, football: false }));
@@ -648,7 +740,7 @@ export function SiteHeader() {
 															{grouped[year].slice(0, 8).map((e: any) => (
 																<Link
 																	key={e.event_id ?? e.id}
-																	href={`/events/${encodeURIComponent(e.event_id ?? e.id)}`}
+																	href={resolveEventLink(e, "formula1")}
 																	className="block px-3 py-2.5 rounded-lg hover:bg-accent active:bg-muted transition-colors"
 																	onClick={() => {
 																		setMobileExpanded((p) => ({ ...p, formula1: false }));
@@ -774,7 +866,7 @@ export function SiteHeader() {
 													{tennisTournaments.slice(0, 20).map((t: any) => (
 														<Link
 															key={t.tournament_id ?? t.id}
-															href={`/events?tournament_id=${encodeURIComponent(String(t.tournament_id ?? t.id))}`}
+															href={resolveTournamentHref("football", t) ?? `/events?tournament_id=${encodeURIComponent(String(t.tournament_id ?? t.id))}`}
 															className="block px-3 py-2.5 rounded-lg hover:bg-accent active:bg-muted transition-colors"
 															onClick={() => {
 																setMobileExpanded((p) => ({ ...p, tennis: false }));
@@ -941,7 +1033,11 @@ export function SiteHeader() {
 													))}
 													<div className="text-sm font-semibold pt-4 mt-2 mb-2">Tournaments</div>
 													{(countryTournaments[activeFootballCountry] ?? []).slice(0, 8).map((t: any) => (
-														<Link key={t.tournament_id ?? t.id} href={`/events?tournament_id=${encodeURIComponent(t.tournament_id ?? t.id)}`} className="block rounded px-3 py-2 hover:bg-accent">
+														<Link
+															key={t.tournament_id ?? t.id}
+															href={resolveTournamentHref("football", t) ?? `/events?tournament_id=${encodeURIComponent(t.tournament_id ?? t.id)}`}
+															className="block rounded px-3 py-2 hover:bg-accent"
+														>
 															{t.official_name ?? t.tournament_name ?? t.name}
 														</Link>
 													))}
@@ -968,17 +1064,36 @@ export function SiteHeader() {
 											return years.map((year) => (
 												<div key={year} className="mb-3">
 													<div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide px-3 py-2">{year}</div>
-													{grouped[year].slice(0, 30).map((e: any) => (
-														<Link key={e.event_id ?? e.id} href={`/events/${encodeURIComponent(e.event_id ?? e.id)}`} className="block rounded px-3 py-2 hover:bg-accent">
-															<div className="flex items-center justify-between gap-3">
-																<span className="truncate flex items-center gap-2">
-																	<CountryFlag countryCode={e.iso_country ?? e.country} size={18} className="flex-shrink-0" />
-																	{e.event_name ?? e.name}
-																</span>
-															<span className="text-xs text-muted-foreground whitespace-nowrap">{formatEventDate(e)}</span>
-														</div>
-													</Link>
-													))}
+													{grouped[year].slice(0, 30).map((e: any) => {
+														const href = resolveEventHref(
+															{
+																id: e.event_id ?? e.id ?? "",
+																event_id: e.event_id ?? e.id ?? "",
+																slug: e.slug ?? e.event_slug ?? null,
+																event: e,
+																sport_type: e.sport_type ?? "formula1",
+																sportType: e.sport_type ?? "formula1",
+																tournament_id: e.tournament_id ?? null,
+																tournamentId: e.tournament_id ?? null,
+															},
+															{
+																sportType: e.sport_type ?? "formula1",
+																tournamentSlug: (e as any)?.tournament_slug ?? null,
+															},
+														);
+
+														return (
+															<Link key={e.event_id ?? e.id} href={href} className="block rounded px-3 py-2 hover:bg-accent">
+																<div className="flex items-center justify-between gap-3">
+																	<span className="truncate flex items-center gap-2">
+																		<CountryFlag countryCode={e.iso_country ?? e.country} size={18} className="flex-shrink-0" />
+																		{e.event_name ?? e.name}
+																	</span>
+																	<span className="text-xs text-muted-foreground whitespace-nowrap">{formatEventDate(e)}</span>
+																</div>
+															</Link>
+														);
+													})}
 												</div>
 											));
 										})()}
@@ -992,9 +1107,10 @@ export function SiteHeader() {
 								<NavigationMenuContent className="p-0">
 									<div className="min-w-[520px] max-h-[420px] overflow-y-auto p-2">
 										{(otherSportEvents["motogp"] ?? [])
-											.slice().sort((a: any, b: any) => new Date(a.date_start ?? 0).getTime() - new Date(b.date_start ?? 0).getTime())
+											.slice()
+											.sort((a: any, b: any) => new Date(a.date_start ?? 0).getTime() - new Date(b.date_start ?? 0).getTime())
 											.map((e: any) => (
-												<Link key={e.event_id ?? e.id} href={`/events/${encodeURIComponent(e.event_id ?? e.id)}`} className="block rounded px-3 py-2 hover:bg-accent">
+												<Link key={e.event_id ?? e.id} href={resolveEventLink(e, "motogp")} className="block rounded px-3 py-2 hover:bg-accent">
 													<div className="flex items-center justify-between gap-3">
 														<span className="truncate flex items-center gap-2">
 															<CountryFlag countryCode={e.iso_country ?? e.country} size={18} className="flex-shrink-0" />
@@ -1016,7 +1132,7 @@ export function SiteHeader() {
 										{(tennisTournaments ?? []).map((t: any) => (
 											<Link
 												key={t.tournament_id ?? t.id}
-												href={`/events?tournament_id=${encodeURIComponent(String(t.tournament_id ?? t.id))}`}
+												href={resolveTournamentHref("tennis", t) ?? `/events?tournament_id=${encodeURIComponent(String(t.tournament_id ?? t.id))}`}
 												className="block rounded px-3 py-2 hover:bg-accent"
 											>
 												<span className="truncate">{t.official_name ?? t.tournament_name ?? t.name}</span>
@@ -1063,7 +1179,7 @@ export function SiteHeader() {
 												<div className="text-sm text-muted-foreground">Loading…</div>
 											)}
 											{activeOtherSport && (otherSportEvents[activeOtherSport] ?? []).slice(0, 20).map((e: any) => (
-												<Link key={e.event_id ?? e.id} href={`/events/${encodeURIComponent(e.event_id ?? e.id)}`} className="block rounded px-3 py-2 hover:bg-accent">
+												<Link key={e.event_id ?? e.id} href={resolveEventLink(e, activeOtherSport)} className="block rounded px-3 py-2 hover:bg-accent">
 													<div className="flex items-center justify-between gap-3">
 														<span className="truncate flex items-center gap-2">
 															<CountryFlag countryCode={e.iso_country ?? e.country} size={18} className="flex-shrink-0" />

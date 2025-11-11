@@ -24,11 +24,15 @@ const nextConfig: NextConfig = {
         pathname: '/**',
       },
       // Add Supabase Storage if URL is configured
-      ...(supabaseHostname ? [{
-        protocol: 'https' as const,
-        hostname: supabaseHostname,
-        pathname: '/storage/v1/object/public/**',
-      }] : []),
+      ...(supabaseHostname
+        ? [
+            {
+              protocol: 'https' as const,
+              hostname: supabaseHostname,
+              pathname: '/storage/v1/object/public/**',
+            },
+          ]
+        : []),
     ],
   },
 };

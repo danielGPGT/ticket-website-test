@@ -22,13 +22,14 @@ import { EventImageWithFallback } from "@/components/event-image-with-fallback";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { getSportPath } from "@/lib/sport-routes";
-import { createEventSlug } from "@/lib/slug";
+import { buildSportPath, resolveEventHref } from "@/lib/seo";
 
 type FeaturedEvent = {
 	id: string;
 	name: string;
 	date?: string;
 	dateEnd?: string;
+	slug?: string | null;
 	countryCode?: string | null;
 	city?: string;
 	venue?: string;
@@ -480,12 +481,27 @@ export function HeroCarousel() {
 						// Handle "soccer" -> "football" mapping (database uses "soccer", route uses "football")
 						const normalizedSportType = event.sportType?.toLowerCase() === "soccer" ? "football" : event.sportType;
 						const sportPath = getSportPath(normalizedSportType);
-						const eventSlug = createEventSlug(event.event || event);
-						const eventUrl = sportPath && eventSlug
-							? `${sportPath}/${eventSlug}`
-							: event.tournamentId
-								? `/events?tournament_id=${encodeURIComponent(event.tournamentId)}`
-								: `/events/${event.id}`;
+						const defaultSportSlug = (normalizedSportType ?? "")
+							.toLowerCase()
+							.replace(/[\s_]+/g, "-")
+							.replace(/-+/g, "-");
+						const eventUrl = resolveEventHref(
+							{
+								id: event.id,
+								event_id: event.event?.event_id ?? event.id,
+								slug: event.event?.slug ?? event.slug,
+								event: event.event,
+								sportType: normalizedSportType,
+								sport_type: normalizedSportType,
+								tournamentId: event.tournamentId,
+								tournament_id: event.tournamentId,
+								tournament: event.tournament,
+							},
+							{
+								sportType: normalizedSportType,
+								tournamentSlug: event.tournament?.slug ?? null,
+							},
+						);
 
 						return (
 							<CarouselItem key={event.id} className="pl-0">
@@ -603,7 +619,7 @@ export function HeroCarousel() {
 													className="bg-background/10 backdrop-blur-sm border-background/30 text-background hover:bg-background/20 hover:border-primary/50 transition-all duration-200 text-xs sm:text-sm md:text-base px-4 sm:px-5 md:px-7 h-10 sm:h-11 md:h-12 w-full sm:w-auto"
 												>
 													<Link 
-														href={sportPath || `/events?sport_type=${event.sportType}`} 
+														href={sportPath ?? buildSportPath(defaultSportSlug)} 
 														className="flex items-center justify-center"
 													>
 														View All {formatSportType(event.sportType)}

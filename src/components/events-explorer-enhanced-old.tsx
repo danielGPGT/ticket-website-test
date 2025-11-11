@@ -10,6 +10,7 @@ import { Drawer, DrawerContent, DrawerTrigger } from "@/components/ui/drawer";
 import { Badge } from "@/components/ui/badge";
 import { Loader2, Filter } from "lucide-react";
 import { normalizeToIso3 } from "@/lib/country-flags";
+import { resolveEventHref } from "@/lib/seo";
 
 type FilterState = {
 	sportType: string[];
@@ -580,6 +581,24 @@ export function EventsExplorerEnhanced() {
 								// XS2 API event_status values: cancelled, closed, notstarted, nosale, postponed, soldout
 								// We'll let the component handle the mapping, just pass the raw status
 								
+								const href = resolveEventHref(
+									{
+										id: String(e.id ?? e.event_id ?? ""),
+										event_id: e.event_id ?? e.id ?? "",
+										slug: e.slug ?? e.event_slug ?? null,
+										event: e,
+										sport_type: e.sport_type ?? e.sportType ?? null,
+										sportType: e.sport_type ?? e.sportType ?? null,
+										tournament_id: e.tournament_id ?? e.tournamentId ?? null,
+										tournamentId: e.tournament_id ?? e.tournamentId ?? null,
+										tournament: e.tournament ?? null,
+									},
+									{
+										sportType: e.sport_type ?? e.sportType ?? null,
+										tournamentSlug: e.tournament?.slug ?? e.tournament_slug ?? null,
+									},
+								);
+								
 								return (
 									<EventCardHorizontal
 										key={e.id ?? e.event_id}
@@ -601,6 +620,7 @@ export function EventsExplorerEnhanced() {
 										numberOfTickets={e.number_of_tickets}
 										currency="£"
 										isPopular={filters.popularEvents || e.is_popular === true || e.popular === true}
+										href={href}
 									/>
 								);
 							})}

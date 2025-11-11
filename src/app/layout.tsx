@@ -21,11 +21,11 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en">
-          <body className={`${montserrat.variable} font-sans antialiased`}>
-            <TopBar />
-            <SiteHeader />
-        {children}
-            <SiteFooter />
+      <body className={`${montserrat.variable} font-sans antialiased min-h-screen flex flex-col bg-background`}>
+        <TopBar />
+        <SiteHeader />
+        <main className="flex-1">{children}</main>
+        <SiteFooter />
       </body>
     </html>
   );

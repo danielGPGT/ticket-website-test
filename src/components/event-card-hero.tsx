@@ -15,6 +15,7 @@ type Props = {
 	sportType?: string;
 	minPrice?: number;
 	imageUrl?: string;
+	href: string;
 };
 
 function formatDate(dateStr?: string): string {
@@ -31,7 +32,7 @@ function formatDate(dateStr?: string): string {
 	}
 }
 
-export function EventCardHero({ id, name, date, venue, countryCode, sportType, minPrice, imageUrl }: Props) {
+export function EventCardHero({ id, name, date, venue, countryCode, sportType, minPrice, imageUrl, href }: Props) {
 	return (
 		<Card className="group relative overflow-hidden border-0 shadow-lg hover:shadow-xl transition-shadow duration-300">
 			{imageUrl ? (
@@ -78,7 +79,7 @@ export function EventCardHero({ id, name, date, venue, countryCode, sportType, m
 						</div>}
 					</div>
 				</div>
-				<Link href={`/events/${id}`} className="mt-4">
+				<Link href={href || `/events/${id}`} className="mt-4">
 					<Button className="w-full" size="lg">
 						View Tickets
 					</Button>

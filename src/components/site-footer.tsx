@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 
 export function SiteFooter() {
 	return (
-		<footer className="border-t bg-card text-foreground">
+		<footer className="border-t bg-card text-foreground ">
 			<div className="mx-auto container px-4 sm:px-6 lg:px-8 py-12">
 				<div className="grid grid-cols-1 md:grid-cols-4 gap-10">
 					<div className="space-y-4">

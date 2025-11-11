@@ -8,6 +8,8 @@ import { Button } from "@/components/ui/button";
 import { SectionHeader } from "@/components/section-header";
 import { ArrowRight } from "lucide-react";
 import { getSportImage, getTournamentImage } from "@/lib/images";
+import { buildSportPath, buildTournamentPath } from "@/lib/seo";
+import { getSportPath } from "@/lib/sport-routes";
 
 const popularLeagues = [
 	{ name: "Formula 1", sport: "formula1", search: "formula 1" },
@@ -198,10 +200,18 @@ export function PopularTournaments() {
 					{/* First two cards - larger */}
 					{popularLeagues.slice(0, 2).map((league) => {
 						const tournamentId = tournaments[league.name];
-						const href = tournamentId 
-							? `/events?tournament_id=${encodeURIComponent(tournamentId)}`
-							: `/events?sport_type=${league.sport}&query=${encodeURIComponent(league.search)}`;
 						const tournament = tournamentId ? tournamentData[tournamentId] : null;
+						const rawSportId = (tournament?.sport_type ?? league.sport ?? "").toLowerCase();
+						const normalizedSportId = rawSportId === "soccer" ? "football" : rawSportId;
+						const fallbackSportPath = buildSportPath(normalizedSportId || league.sport);
+						const sportPath = (getSportPath(normalizedSportId) ?? fallbackSportPath) || fallbackSportPath;
+						const sportSlug = sportPath.replace(/^\//, "");
+						const tournamentSlug = tournament?.slug?.toLowerCase?.();
+						const href =
+							tournamentSlug && sportSlug
+								? buildTournamentPath(sportSlug, tournamentSlug)
+								: sportPath;
+
 						// Map "soccer" to "football" for sport lookup (since sports table might use "football")
 						const sportKey = league.sport === "soccer" ? "football" : league.sport.toLowerCase();
 						const sport = sports[sportKey] || sports[league.sport.toLowerCase()];
@@ -249,10 +259,17 @@ export function PopularTournaments() {
 				<div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 md:gap-5 lg:gap-6 mt-4 sm:mt-5 md:mt-6">
 					{popularLeagues.slice(2).map((league) => {
 						const tournamentId = tournaments[league.name];
-						const href = tournamentId 
-							? `/events?tournament_id=${encodeURIComponent(tournamentId)}`
-							: `/events?sport_type=${league.sport}&query=${encodeURIComponent(league.search)}`;
 						const tournament = tournamentId ? tournamentData[tournamentId] : null;
+						const rawSportId = (tournament?.sport_type ?? league.sport ?? "").toLowerCase();
+						const normalizedSportId = rawSportId === "soccer" ? "football" : rawSportId;
+						const fallbackSportPath = buildSportPath(normalizedSportId || league.sport);
+						const sportPath = (getSportPath(normalizedSportId) ?? fallbackSportPath) || fallbackSportPath;
+						const sportSlug = sportPath.replace(/^\//, "");
+						const tournamentSlug = tournament?.slug?.toLowerCase?.();
+						const href =
+							tournamentSlug && sportSlug
+								? buildTournamentPath(sportSlug, tournamentSlug)
+								: sportPath;
 						// Map "soccer" to "football" for sport lookup (since sports table might use "football")
 						const sportKey = league.sport === "soccer" ? "football" : league.sport.toLowerCase();
 						const sport = sports[sportKey] || sports[league.sport.toLowerCase()];

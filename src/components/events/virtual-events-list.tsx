@@ -5,6 +5,7 @@ import { useRef } from "react";
 import { EventCardHorizontal } from "@/components/event-card-horizontal";
 import { EventCardSkeleton } from "./event-card-skeleton";
 import type { FilterState } from "@/hooks/use-filters";
+import { resolveEventHref } from "@/lib/seo";
 
 type VirtualEventsListProps = {
 	events: any[];
@@ -64,6 +65,24 @@ export function VirtualEventsList({ events, loading, filters, height = 800, spor
 						const timeStart = e.date_start_main_event ?? e.date_start;
 						const timeEnd = e.date_stop_main_event ?? e.date_stop;
 
+						const href = resolveEventHref(
+							{
+								id: String(e.id ?? e.event_id ?? ""),
+								event_id: e.event_id ?? e.id ?? "",
+								slug: e.slug ?? e.event_slug ?? null,
+								event: e,
+								sport_type: e.sport_type ?? e.sportType ?? null,
+								sportType: e.sport_type ?? e.sportType ?? null,
+								tournament_id: e.tournament_id ?? e.tournamentId ?? null,
+								tournamentId: e.tournament_id ?? e.tournamentId ?? null,
+								tournament: e.tournament ?? null,
+							},
+							{
+								sportType: e.sport_type ?? e.sportType ?? null,
+								tournamentSlug: e.tournament?.slug ?? e.tournament_slug ?? null,
+							},
+						);
+
 						return (
 							<div
 								key={virtualItem.key}
@@ -96,8 +115,8 @@ export function VirtualEventsList({ events, loading, filters, height = 800, spor
 									numberOfTickets={e.number_of_tickets}
 									currency="£"
 									isPopular={e.is_popular === true || e.popular === true}
-									sportPath={sportPath}
 									event={e}
+									href={href}
 								/>
 							</div>
 						);
@@ -114,6 +133,24 @@ export function VirtualEventsList({ events, loading, filters, height = 800, spor
 				const countryCode = e.iso_country ?? e.country ?? e.venue_country ?? e.location?.country ?? e.location?.iso_country ?? null;
 				const timeStart = e.date_start_main_event ?? e.date_start;
 				const timeEnd = e.date_stop_main_event ?? e.date_stop;
+
+				const href = resolveEventHref(
+					{
+						id: String(e.id ?? e.event_id ?? ""),
+						event_id: e.event_id ?? e.id ?? "",
+						slug: e.slug ?? e.event_slug ?? null,
+						event: e,
+						sport_type: e.sport_type ?? e.sportType ?? null,
+						sportType: e.sport_type ?? e.sportType ?? null,
+						tournament_id: e.tournament_id ?? e.tournamentId ?? null,
+						tournamentId: e.tournament_id ?? e.tournamentId ?? null,
+						tournament: e.tournament ?? null,
+					},
+					{
+						sportType: e.sport_type ?? e.sportType ?? null,
+						tournamentSlug: e.tournament?.slug ?? e.tournament_slug ?? null,
+					},
+				);
 
 				return (
 					<EventCardHorizontal
@@ -136,8 +173,8 @@ export function VirtualEventsList({ events, loading, filters, height = 800, spor
 						numberOfTickets={e.number_of_tickets}
 						currency="£"
 						isPopular={filters.popularEvents || e.is_popular === true || e.popular === true}
-						sportPath={sportPath}
 						event={e}
+						href={href}
 					/>
 				);
 			})}

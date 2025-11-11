@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { CountryFlag } from "@/components/country-flag";
 import { Clock, Bell, ArrowRight, Flame, Calendar } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { createEventSlug } from "@/lib/slug";
+import { resolveEventHref } from "@/lib/seo";
 
 type Props = {
 	id: string;
@@ -29,7 +29,7 @@ type Props = {
 	numberOfTickets?: number;
 	currency?: string;
 	isPopular?: boolean;
-	sportPath?: string | null; // Sport-specific path for slug-based URLs (e.g., "/formula-1")
+	href?: string;
 	event?: any; // Full event object for slug generation
 };
 
@@ -119,7 +119,7 @@ export function EventCardHorizontal({
 	numberOfTickets,
 	currency = "£",
 	isPopular = false,
-	sportPath,
+	href,
 	event
 }: Props) {
 	// Determine stock status from event status and ticket availability
@@ -200,10 +200,24 @@ export function EventCardHorizontal({
 		event?.tournament?.season ??
 		null;
 
-	// Generate URL - use slug-based URL if on sport page, otherwise use ID-based
-	const eventUrl = sportPath && event 
-		? `${sportPath}/${createEventSlug(event)}`
-		: `/events/${id}`;
+	// Generate canonical event URL
+	const eventUrl = href ?? resolveEventHref(
+		{
+			id,
+			event_id: id,
+			slug: event?.slug ?? event?.event_slug ?? null,
+			event,
+			sport_type: sportType,
+			sportType,
+			tournament_id: event?.tournament_id ?? null,
+			tournamentId: event?.tournament_id ?? null,
+			tournament: event?.tournament ?? null,
+		},
+		{
+			sportType,
+			tournamentSlug: event?.tournament?.slug ?? (event as any)?.tournament_slug ?? null,
+		},
+	);
 
 	return (
 		<Link href={eventUrl} className="block">
